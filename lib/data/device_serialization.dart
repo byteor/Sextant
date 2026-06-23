@@ -23,6 +23,7 @@ Map<String, dynamic> deviceToMap(Device device) => {
       'networkId': device.networkId,
       'isOnline': device.isOnline,
       'latencyMs': device.latencyMs,
+      'additionalIps': device.additionalIps,
     };
 
 Device deviceFromMap(Map<String, dynamic> map) => Device(
@@ -48,6 +49,9 @@ Device deviceFromMap(Map<String, dynamic> map) => Device(
       networkId: map['networkId'] as String?,
       isOnline: map['isOnline'] as bool? ?? true,
       latencyMs: (map['latencyMs'] as num?)?.toDouble(),
+      additionalIps: [
+        for (final ip in (map['additionalIps'] as List? ?? const [])) ip as String,
+      ],
     );
 
 DeviceType _deviceType(Object? name) {

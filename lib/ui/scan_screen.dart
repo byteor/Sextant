@@ -377,12 +377,28 @@ class DeviceRow extends ConsumerWidget {
           ),
           SizedBox(
             width: _kIpWidth,
-            child: Text(
-              device.ip,
-              style: TextStyle(
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: offline ? muted : null,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  device.ip,
+                  style: TextStyle(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: offline ? muted : null,
+                  ),
+                ),
+                if (device.additionalIps.isNotEmpty)
+                  Tooltip(
+                    message: 'Also seen at: ${device.additionalIps.join(', ')}',
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Text(
+                        '+${device.additionalIps.length}',
+                        style: mutedSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           Expanded(

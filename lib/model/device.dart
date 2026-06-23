@@ -17,6 +17,7 @@ class Device {
     this.networkId,
     this.isOnline = true,
     this.latencyMs,
+    this.additionalIps = const [],
   })  : openPorts = openPorts ?? const [],
         services = services ?? const {},
         discoveredBy = discoveredBy ?? const {};
@@ -50,6 +51,10 @@ class Device {
   /// pinged this device, if any (some devices never answer ICMP).
   final double? latencyMs;
 
+  /// Secondary IPs of the same physical host (multi-homed devices sharing a
+  /// MAC), beyond the primary [ip]. Populated only by display-time dedup.
+  final List<String> additionalIps;
+
   /// What to show as the device's primary label.
   String get displayName => customName ?? hostname ?? ip;
 
@@ -79,6 +84,7 @@ class Device {
     String? networkId,
     bool? isOnline,
     double? latencyMs,
+    List<String>? additionalIps,
   }) {
     return Device(
       ip: ip ?? this.ip,
@@ -95,6 +101,7 @@ class Device {
       networkId: networkId ?? this.networkId,
       isOnline: isOnline ?? this.isOnline,
       latencyMs: latencyMs ?? this.latencyMs,
+      additionalIps: additionalIps ?? this.additionalIps,
     );
   }
 }

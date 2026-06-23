@@ -21,6 +21,7 @@ void main() {
         networkId: 'net-abc',
         isOnline: false,
         latencyMs: 12.5,
+        additionalIps: ['192.168.1.43'],
       );
 
       final restored = deviceFromMap(deviceToMap(device));
@@ -40,6 +41,7 @@ void main() {
       expect(restored.networkId, 'net-abc');
       expect(restored.isOnline, false);
       expect(restored.latencyMs, 12.5);
+      expect(restored.additionalIps, ['192.168.1.43']);
     });
 
     test('round-trips a minimal device with null/empty fields', () {
@@ -63,6 +65,7 @@ void main() {
       expect(restored.networkId, isNull);
       expect(restored.isOnline, true);
       expect(restored.latencyMs, isNull);
+      expect(restored.additionalIps, isEmpty);
     });
 
     test('decodes an unrecognised device type as unknown', () {

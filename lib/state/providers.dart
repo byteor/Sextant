@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../data/dedupe_multihomed.dart';
 import '../data/device_identity.dart';
 import '../data/history_database.dart';
 import '../data/latency_samples.dart';
@@ -429,7 +430,7 @@ class ScanController extends Notifier<ScanState> {
     final sorted = _byIp.values.toList()
       ..sort((a, b) => a.ipSortKey.compareTo(b.ipSortKey));
     state = state.copyWith(
-      devices: sorted,
+      devices: dedupeMultihomed(sorted),
       scanned: _probed,
       isScanning: isScanning,
       enriching: enriching,
