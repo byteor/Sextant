@@ -22,15 +22,34 @@ class Scans extends Table {
   TextColumn get devicesJson => text()();
 }
 
+/// One latency reading for one device, keyed by its stable [deviceIdentity]
+/// (see `lib/data/device_identity.dart`) rather than IP, since IPs can change
+/// between scans. Feeds the per-device sparkline.
+class LatencySamples extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get deviceIdentity => text()();
+  TextColumn get networkId => text()();
+  DateTimeColumn get timestamp => dateTime()();
+  RealColumn get rttMs => real()();
+}
+
 /// Drift-backed store for scan history. Construct with
 /// `HistoryDatabase(NativeDatabase.memory())` in tests, or the app's on-disk
 /// executor in production.
-@DriftDatabase(tables: [Scans])
+@DriftDatabase(tables: [Scans, LatencySamples])
 class HistoryDatabase extends _$HistoryDatabase {
   HistoryDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(latencySamples);
+        },
+      );
 
   /// Persists [record] and returns its assigned id. When [maxScans] is given,
   /// the oldest scans beyond that many (across all networks) are pruned, so the
@@ -67,6 +86,46 @@ class HistoryDatabase extends _$HistoryDatabase {
 
   Future<void> clearHistory() => delete(scans).go();
 
+  /// Records latency [samples] (each a reading for one device at one time)
+  /// and prunes each sampled device's history beyond [maxSamplesPerDevice]
+  /// (oldest first), so the table can't grow without bound under long-running
+  /// monitoring.
+  Future<void> recordLatencySamples(
+    List<({String deviceIdentity, String networkId, DateTime timestamp, double rttMs})>
+        samples, {
+    int maxSamplesPerDevice = 200,
+  }) async {
+    if (samples.isEmpty) return;
+    await batch((b) {
+      b.insertAll(latencySamples, [
+        for (final s in samples)
+          LatencySamplesCompanion.insert(
+            deviceIdentity: s.deviceIdentity,
+            networkId: s.networkId,
+            timestamp: s.timestamp,
+            rttMs: s.rttMs,
+          ),
+      ]);
+    });
+    for (final identity in {for (final s in samples) s.deviceIdentity}) {
+      await _pruneSamplesTo(identity, maxSamplesPerDevice);
+    }
+  }
+
+  /// The most recent [limit] samples for [deviceIdentity], oldest first (so
+  /// callers can plot them left-to-right as a time series).
+  Future<List<LatencySample>> latencyHistory(
+    String deviceIdentity, {
+    int limit = 50,
+  }) async {
+    final query = select(latencySamples)
+      ..where((t) => t.deviceIdentity.equals(deviceIdentity))
+      ..orderBy([(t) => OrderingTerm.desc(t.timestamp)])
+      ..limit(limit);
+    final rows = await query.get();
+    return rows.reversed.toList();
+  }
+
   /// Deletes the oldest scans so at most [maxScans] remain.
   Future<void> _pruneTo(int maxScans) async {
     final keepIds = await (selectOnly(scans)
@@ -76,6 +135,22 @@ class HistoryDatabase extends _$HistoryDatabase {
         .map((row) => row.read(scans.id)!)
         .get();
     await (delete(scans)..where((s) => s.id.isNotIn(keepIds))).go();
+  }
+
+  /// Deletes the oldest latency samples for [deviceIdentity] so at most [max]
+  /// remain.
+  Future<void> _pruneSamplesTo(String deviceIdentity, int max) async {
+    final keepIds = await (selectOnly(latencySamples)
+          ..addColumns([latencySamples.id])
+          ..where(latencySamples.deviceIdentity.equals(deviceIdentity))
+          ..orderBy([OrderingTerm.desc(latencySamples.timestamp)])
+          ..limit(max))
+        .map((row) => row.read(latencySamples.id)!)
+        .get();
+    await (delete(latencySamples)
+          ..where((t) =>
+              t.deviceIdentity.equals(deviceIdentity) & t.id.isNotIn(keepIds)))
+        .go();
   }
 
   ScanRecord _toRecord(Scan row) => ScanRecord(
