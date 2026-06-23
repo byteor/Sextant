@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/device_identity.dart';
 import '../export/scan_export.dart';
 import '../model/device.dart';
 import '../model/discovery_source.dart';
@@ -16,6 +17,7 @@ import '../state/network_selection.dart';
 import '../state/providers.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
+import 'latency_sparkline.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -318,6 +320,7 @@ class _DeviceTableHeader extends StatelessWidget {
           Expanded(flex: 2, child: Text('Vendor', style: style)),
           Expanded(flex: 3, child: Text('Open ports', style: style)),
           SizedBox(width: 80, child: Text('Found via', style: style)),
+          SizedBox(width: 56, child: Text('Latency', style: style)),
         ],
       ),
     );
@@ -342,6 +345,11 @@ class DeviceRow extends ConsumerWidget {
     final muted = theme.colorScheme.onSurfaceVariant;
     final small = theme.textTheme.bodySmall;
     final mutedSmall = small?.copyWith(color: muted);
+    final identity = deviceIdentity(
+      mac: device.mac,
+      hostname: device.hostname,
+      openPorts: device.openPorts,
+    );
 
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -436,6 +444,13 @@ class DeviceRow extends ConsumerWidget {
                   ),
               ],
             ),
+          ),
+          SizedBox(
+            width: 56,
+            child: ref.watch(latencyHistoryProvider(identity)).maybeWhen(
+                  data: (values) => LatencySparkline(values: values),
+                  orElse: () => const SizedBox.shrink(),
+                ),
           ),
         ],
       ),
