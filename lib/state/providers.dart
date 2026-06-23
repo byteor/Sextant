@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../data/device_identity.dart';
 import '../data/history_database.dart';
+import '../data/latency_samples.dart';
 import '../data/rename_store.dart';
 import '../data/scan_diff.dart';
 import '../data/scan_history.dart';
@@ -62,6 +63,15 @@ final scanHistoryProvider =
 /// Upper bound on retained scan snapshots, enforced on every save so live
 /// monitoring can't grow the history file without limit.
 const _historyRetention = 500;
+
+/// The recent latency history for one device (by stable identity), used to
+/// draw its sparkline. Invalidated whenever new samples are recorded.
+final latencyHistoryProvider =
+    FutureProvider.family<List<double>, String>((ref, deviceIdentity) async {
+  final db = ref.watch(historyDatabaseProvider);
+  final samples = await db.latencyHistory(deviceIdentity);
+  return [for (final s in samples) s.rttMs];
+});
 
 /// The OUI → vendor lookup, loaded from the bundled IEEE database
 /// (`assets/oui.tsv`, ~39.5k entries), with the small seed table as a fallback
@@ -182,6 +192,7 @@ class ScanController extends Notifier<ScanState> {
 
     await completer.future;
     _emit(isScanning: false);
+    await _recordLatency(network, _byIp.values.toList());
     await _saveHistory(network, _byIp.values.toList());
   }
 
@@ -232,6 +243,7 @@ class ScanController extends Notifier<ScanState> {
     if (!_monitoring || _monitorNetwork == null) return;
     final found = await _backgroundScan(_monitorNetwork!);
     if (!_monitoring) return; // toggled off mid-scan; discard
+    await _recordLatency(_monitorNetwork!, found);
     final diff = _reconcile(found);
     // Only record a snapshot when something actually changed, so the history is
     // a meaningful change log rather than thousands of identical hourly dumps.
@@ -310,6 +322,19 @@ class ScanController extends Notifier<ScanState> {
       maxScans: _historyRetention,
     );
     ref.invalidate(scanHistoryProvider);
+  }
+
+  /// Persists a latency reading for every device that answered ICMP this pass
+  /// and refreshes any open sparklines.
+  Future<void> _recordLatency(ScanNetwork network, List<Device> devices) async {
+    final samples = buildLatencySamples(
+      devices,
+      networkId: network.id,
+      now: DateTime.now(),
+    );
+    if (samples.isEmpty) return;
+    await ref.read(historyDatabaseProvider).recordLatencySamples(samples);
+    ref.invalidate(latencyHistoryProvider);
   }
 
   String _identityOf(Device d) => deviceIdentity(
