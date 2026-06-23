@@ -1,0 +1,12 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Store DateTime columns as ISO-8601 UTC text rather than Unix epoch
+          # seconds. Text storage round-trips a UTC DateTime back as the same
+          # UTC DateTime (epoch-int storage returns it in local time, so the
+          # instant is preserved but the DateTime object no longer compares
+          # equal). It also keeps sub-second precision. Drift's recommended
+          # default for new schemas.
+          store_date_time_values_as_text: true

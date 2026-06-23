@@ -1,0 +1,659 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'history_database.dart';
+
+// ignore_for_file: type=lint
+class $ScansTable extends Scans with TableInfo<$ScansTable, Scan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _networkIdMeta = const VerificationMeta(
+    'networkId',
+  );
+  @override
+  late final GeneratedColumn<String> networkId = GeneratedColumn<String>(
+    'network_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _networkLabelMeta = const VerificationMeta(
+    'networkLabel',
+  );
+  @override
+  late final GeneratedColumn<String> networkLabel = GeneratedColumn<String>(
+    'network_label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceCountMeta = const VerificationMeta(
+    'deviceCount',
+  );
+  @override
+  late final GeneratedColumn<int> deviceCount = GeneratedColumn<int>(
+    'device_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _devicesJsonMeta = const VerificationMeta(
+    'devicesJson',
+  );
+  @override
+  late final GeneratedColumn<String> devicesJson = GeneratedColumn<String>(
+    'devices_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    networkId,
+    networkLabel,
+    timestamp,
+    deviceCount,
+    devicesJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Scan> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('network_id')) {
+      context.handle(
+        _networkIdMeta,
+        networkId.isAcceptableOrUnknown(data['network_id']!, _networkIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_networkIdMeta);
+    }
+    if (data.containsKey('network_label')) {
+      context.handle(
+        _networkLabelMeta,
+        networkLabel.isAcceptableOrUnknown(
+          data['network_label']!,
+          _networkLabelMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_networkLabelMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('device_count')) {
+      context.handle(
+        _deviceCountMeta,
+        deviceCount.isAcceptableOrUnknown(
+          data['device_count']!,
+          _deviceCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceCountMeta);
+    }
+    if (data.containsKey('devices_json')) {
+      context.handle(
+        _devicesJsonMeta,
+        devicesJson.isAcceptableOrUnknown(
+          data['devices_json']!,
+          _devicesJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_devicesJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Scan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Scan(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      networkId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network_id'],
+      )!,
+      networkLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network_label'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      deviceCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}device_count'],
+      )!,
+      devicesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}devices_json'],
+      )!,
+    );
+  }
+
+  @override
+  $ScansTable createAlias(String alias) {
+    return $ScansTable(attachedDatabase, alias);
+  }
+}
+
+class Scan extends DataClass implements Insertable<Scan> {
+  final int id;
+  final String networkId;
+  final String networkLabel;
+  final DateTime timestamp;
+  final int deviceCount;
+  final String devicesJson;
+  const Scan({
+    required this.id,
+    required this.networkId,
+    required this.networkLabel,
+    required this.timestamp,
+    required this.deviceCount,
+    required this.devicesJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['network_id'] = Variable<String>(networkId);
+    map['network_label'] = Variable<String>(networkLabel);
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    map['device_count'] = Variable<int>(deviceCount);
+    map['devices_json'] = Variable<String>(devicesJson);
+    return map;
+  }
+
+  ScansCompanion toCompanion(bool nullToAbsent) {
+    return ScansCompanion(
+      id: Value(id),
+      networkId: Value(networkId),
+      networkLabel: Value(networkLabel),
+      timestamp: Value(timestamp),
+      deviceCount: Value(deviceCount),
+      devicesJson: Value(devicesJson),
+    );
+  }
+
+  factory Scan.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Scan(
+      id: serializer.fromJson<int>(json['id']),
+      networkId: serializer.fromJson<String>(json['networkId']),
+      networkLabel: serializer.fromJson<String>(json['networkLabel']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      deviceCount: serializer.fromJson<int>(json['deviceCount']),
+      devicesJson: serializer.fromJson<String>(json['devicesJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'networkId': serializer.toJson<String>(networkId),
+      'networkLabel': serializer.toJson<String>(networkLabel),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'deviceCount': serializer.toJson<int>(deviceCount),
+      'devicesJson': serializer.toJson<String>(devicesJson),
+    };
+  }
+
+  Scan copyWith({
+    int? id,
+    String? networkId,
+    String? networkLabel,
+    DateTime? timestamp,
+    int? deviceCount,
+    String? devicesJson,
+  }) => Scan(
+    id: id ?? this.id,
+    networkId: networkId ?? this.networkId,
+    networkLabel: networkLabel ?? this.networkLabel,
+    timestamp: timestamp ?? this.timestamp,
+    deviceCount: deviceCount ?? this.deviceCount,
+    devicesJson: devicesJson ?? this.devicesJson,
+  );
+  Scan copyWithCompanion(ScansCompanion data) {
+    return Scan(
+      id: data.id.present ? data.id.value : this.id,
+      networkId: data.networkId.present ? data.networkId.value : this.networkId,
+      networkLabel: data.networkLabel.present
+          ? data.networkLabel.value
+          : this.networkLabel,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      deviceCount: data.deviceCount.present
+          ? data.deviceCount.value
+          : this.deviceCount,
+      devicesJson: data.devicesJson.present
+          ? data.devicesJson.value
+          : this.devicesJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Scan(')
+          ..write('id: $id, ')
+          ..write('networkId: $networkId, ')
+          ..write('networkLabel: $networkLabel, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('deviceCount: $deviceCount, ')
+          ..write('devicesJson: $devicesJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    networkId,
+    networkLabel,
+    timestamp,
+    deviceCount,
+    devicesJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Scan &&
+          other.id == this.id &&
+          other.networkId == this.networkId &&
+          other.networkLabel == this.networkLabel &&
+          other.timestamp == this.timestamp &&
+          other.deviceCount == this.deviceCount &&
+          other.devicesJson == this.devicesJson);
+}
+
+class ScansCompanion extends UpdateCompanion<Scan> {
+  final Value<int> id;
+  final Value<String> networkId;
+  final Value<String> networkLabel;
+  final Value<DateTime> timestamp;
+  final Value<int> deviceCount;
+  final Value<String> devicesJson;
+  const ScansCompanion({
+    this.id = const Value.absent(),
+    this.networkId = const Value.absent(),
+    this.networkLabel = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.deviceCount = const Value.absent(),
+    this.devicesJson = const Value.absent(),
+  });
+  ScansCompanion.insert({
+    this.id = const Value.absent(),
+    required String networkId,
+    required String networkLabel,
+    required DateTime timestamp,
+    required int deviceCount,
+    required String devicesJson,
+  }) : networkId = Value(networkId),
+       networkLabel = Value(networkLabel),
+       timestamp = Value(timestamp),
+       deviceCount = Value(deviceCount),
+       devicesJson = Value(devicesJson);
+  static Insertable<Scan> custom({
+    Expression<int>? id,
+    Expression<String>? networkId,
+    Expression<String>? networkLabel,
+    Expression<DateTime>? timestamp,
+    Expression<int>? deviceCount,
+    Expression<String>? devicesJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (networkId != null) 'network_id': networkId,
+      if (networkLabel != null) 'network_label': networkLabel,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (deviceCount != null) 'device_count': deviceCount,
+      if (devicesJson != null) 'devices_json': devicesJson,
+    });
+  }
+
+  ScansCompanion copyWith({
+    Value<int>? id,
+    Value<String>? networkId,
+    Value<String>? networkLabel,
+    Value<DateTime>? timestamp,
+    Value<int>? deviceCount,
+    Value<String>? devicesJson,
+  }) {
+    return ScansCompanion(
+      id: id ?? this.id,
+      networkId: networkId ?? this.networkId,
+      networkLabel: networkLabel ?? this.networkLabel,
+      timestamp: timestamp ?? this.timestamp,
+      deviceCount: deviceCount ?? this.deviceCount,
+      devicesJson: devicesJson ?? this.devicesJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (networkId.present) {
+      map['network_id'] = Variable<String>(networkId.value);
+    }
+    if (networkLabel.present) {
+      map['network_label'] = Variable<String>(networkLabel.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (deviceCount.present) {
+      map['device_count'] = Variable<int>(deviceCount.value);
+    }
+    if (devicesJson.present) {
+      map['devices_json'] = Variable<String>(devicesJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScansCompanion(')
+          ..write('id: $id, ')
+          ..write('networkId: $networkId, ')
+          ..write('networkLabel: $networkLabel, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('deviceCount: $deviceCount, ')
+          ..write('devicesJson: $devicesJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
+abstract class _$HistoryDatabase extends GeneratedDatabase {
+  _$HistoryDatabase(QueryExecutor e) : super(e);
+  $HistoryDatabaseManager get managers => $HistoryDatabaseManager(this);
+  late final $ScansTable scans = $ScansTable(this);
+  @override
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  @override
+  List<DatabaseSchemaEntity> get allSchemaEntities => [scans];
+  @override
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
+}
+
+typedef $$ScansTableCreateCompanionBuilder =
+    ScansCompanion Function({
+      Value<int> id,
+      required String networkId,
+      required String networkLabel,
+      required DateTime timestamp,
+      required int deviceCount,
+      required String devicesJson,
+    });
+typedef $$ScansTableUpdateCompanionBuilder =
+    ScansCompanion Function({
+      Value<int> id,
+      Value<String> networkId,
+      Value<String> networkLabel,
+      Value<DateTime> timestamp,
+      Value<int> deviceCount,
+      Value<String> devicesJson,
+    });
+
+class $$ScansTableFilterComposer
+    extends Composer<_$HistoryDatabase, $ScansTable> {
+  $$ScansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get networkId => $composableBuilder(
+    column: $table.networkId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get networkLabel => $composableBuilder(
+    column: $table.networkLabel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deviceCount => $composableBuilder(
+    column: $table.deviceCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get devicesJson => $composableBuilder(
+    column: $table.devicesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ScansTableOrderingComposer
+    extends Composer<_$HistoryDatabase, $ScansTable> {
+  $$ScansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get networkId => $composableBuilder(
+    column: $table.networkId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get networkLabel => $composableBuilder(
+    column: $table.networkLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deviceCount => $composableBuilder(
+    column: $table.deviceCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get devicesJson => $composableBuilder(
+    column: $table.devicesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ScansTableAnnotationComposer
+    extends Composer<_$HistoryDatabase, $ScansTable> {
+  $$ScansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get networkId =>
+      $composableBuilder(column: $table.networkId, builder: (column) => column);
+
+  GeneratedColumn<String> get networkLabel => $composableBuilder(
+    column: $table.networkLabel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get deviceCount => $composableBuilder(
+    column: $table.deviceCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get devicesJson => $composableBuilder(
+    column: $table.devicesJson,
+    builder: (column) => column,
+  );
+}
+
+class $$ScansTableTableManager
+    extends
+        RootTableManager<
+          _$HistoryDatabase,
+          $ScansTable,
+          Scan,
+          $$ScansTableFilterComposer,
+          $$ScansTableOrderingComposer,
+          $$ScansTableAnnotationComposer,
+          $$ScansTableCreateCompanionBuilder,
+          $$ScansTableUpdateCompanionBuilder,
+          (Scan, BaseReferences<_$HistoryDatabase, $ScansTable, Scan>),
+          Scan,
+          PrefetchHooks Function()
+        > {
+  $$ScansTableTableManager(_$HistoryDatabase db, $ScansTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ScansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> networkId = const Value.absent(),
+                Value<String> networkLabel = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<int> deviceCount = const Value.absent(),
+                Value<String> devicesJson = const Value.absent(),
+              }) => ScansCompanion(
+                id: id,
+                networkId: networkId,
+                networkLabel: networkLabel,
+                timestamp: timestamp,
+                deviceCount: deviceCount,
+                devicesJson: devicesJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String networkId,
+                required String networkLabel,
+                required DateTime timestamp,
+                required int deviceCount,
+                required String devicesJson,
+              }) => ScansCompanion.insert(
+                id: id,
+                networkId: networkId,
+                networkLabel: networkLabel,
+                timestamp: timestamp,
+                deviceCount: deviceCount,
+                devicesJson: devicesJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ScansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HistoryDatabase,
+      $ScansTable,
+      Scan,
+      $$ScansTableFilterComposer,
+      $$ScansTableOrderingComposer,
+      $$ScansTableAnnotationComposer,
+      $$ScansTableCreateCompanionBuilder,
+      $$ScansTableUpdateCompanionBuilder,
+      (Scan, BaseReferences<_$HistoryDatabase, $ScansTable, Scan>),
+      Scan,
+      PrefetchHooks Function()
+    >;
+
+class $HistoryDatabaseManager {
+  final _$HistoryDatabase _db;
+  $HistoryDatabaseManager(this._db);
+  $$ScansTableTableManager get scans =>
+      $$ScansTableTableManager(_db, _db.scans);
+}
