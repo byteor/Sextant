@@ -87,8 +87,17 @@ typedef PingProgress = void Function(int done, int total);
 /// replies. Doubles as an ARP primer: sending an echo to an on-link host
 /// triggers ARP resolution, so the OS ARP cache is populated for every host
 /// that answers at layer 2 — even those that drop the ICMP echo.
+///
+/// The ping sweep is the dominant phase of a scan: a host that doesn't reply
+/// costs the full [IcmpPinger.timeout] (1s default). At concurrency 64, a
+/// /22 (1022 hosts) needs >=16 sequential rounds whenever any round contains
+/// a non-responder — which is most of them — i.e. >=16s just for the sweep,
+/// matching the ~18s observed on the real /22 this was tuned against.
+/// Concurrency 128 halves that floor to >=8 rounds, while staying well below
+/// the TCP scanner's 256 (each ping forks a process, heavier than a TCP
+/// connect, so it isn't raised all the way to parity).
 class IcmpSweeper {
-  IcmpSweeper({IcmpPinger? pinger, this.concurrency = 64})
+  IcmpSweeper({IcmpPinger? pinger, this.concurrency = 128})
       : _pinger = pinger ?? const IcmpPinger();
 
   final IcmpPinger _pinger;

@@ -67,4 +67,10 @@ void main() {
       expect(alive, isFalse);
     });
   });
+
+  group('IcmpSweeper', () {
+    test('defaults to a concurrency of 128', () {
+      expect(IcmpSweeper().concurrency, 128);
+    });
+  });
 }
