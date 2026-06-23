@@ -103,5 +103,19 @@ void main() {
       expect(refreshed, isFalse);
       expect(await cacheFile.readAsString(), 'AABBCC\tOld Vendor\n');
     });
+
+    test('returns false and does not crash when file I/O fails (e.g., cache path is a directory)', () async {
+      // Create a directory at the cache path so writeAsString will fail
+      await Directory(cacheFile.path).create(recursive: true);
+
+      final refresher = OuiRefresher(
+        fetch: (uri) async => 'Registry,Assignment,Organization Name,Address\n'
+            'MA-L,AABBCC,Some Vendor,Addr\n',
+      );
+
+      final refreshed = await refresher.refreshIfStale(cacheFile);
+
+      expect(refreshed, isFalse);
+    });
   });
 }

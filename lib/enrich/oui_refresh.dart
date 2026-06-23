@@ -103,16 +103,23 @@ class OuiRefresher {
   /// Refreshes [cacheFile] in place if it's missing or older than [maxAge].
   /// Returns true if a refresh actually happened.
   Future<bool> refreshIfStale(File cacheFile) async {
-    if (await cacheFile.exists()) {
-      final age = DateTime.now().difference(await cacheFile.lastModified());
-      if (age < maxAge) return false;
+    try {
+      if (await cacheFile.exists()) {
+        final age = DateTime.now().difference(await cacheFile.lastModified());
+        if (age < maxAge) return false;
+      }
+      final csv = await _fetch(source);
+      if (csv == null) return false;
+      final table = parseOuiCsv(csv);
+      if (table.isEmpty) return false;
+      await cacheFile.create(recursive: true);
+      await cacheFile.writeAsString(ouiTableToTsv(table));
+      return true;
+    } on FileSystemException {
+      // File I/O errors (permissions, disk full, path conflicts, etc.) are
+      // independent of network failures and should not crash the app; the
+      // existing cache remains a fallback.
+      return false;
     }
-    final csv = await _fetch(source);
-    if (csv == null) return false;
-    final table = parseOuiCsv(csv);
-    if (table.isEmpty) return false;
-    await cacheFile.create(recursive: true);
-    await cacheFile.writeAsString(ouiTableToTsv(table));
-    return true;
   }
 }
