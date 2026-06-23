@@ -17,6 +17,7 @@ import '../data/scan_record.dart';
 import '../data/type_override_store.dart';
 import '../enrich/device_classifier.dart';
 import '../enrich/liveness.dart';
+import '../enrich/oui_refresh.dart';
 import '../enrich/oui_seed.dart';
 import '../enrich/oui_vendor_lookup.dart';
 import '../model/device.dart';
@@ -74,13 +75,23 @@ final latencyHistoryProvider =
   return [for (final s in samples) s.rttMs];
 });
 
-/// The OUI → vendor lookup, loaded from the bundled IEEE database
-/// (`assets/oui.tsv`, ~39.5k entries), with the small seed table as a fallback
-/// for any prefixes not present. Falls back to the seed alone if the asset
-/// can't be read.
+/// The OUI → vendor lookup. Prefers a previously-refreshed cache in the app
+/// support directory over the bundled IEEE snapshot (`assets/oui.tsv`,
+/// ~39.5k entries, which only updates between app releases), with the small
+/// seed table as a fallback for any prefixes not present in either. A
+/// background refresh is kicked off on every load (debounced by [OuiRefresher]'s
+/// `maxAge`) so the cache improves over time without ever blocking this lookup
+/// or requiring the app to be online.
 final ouiLookupProvider = FutureProvider<OuiVendorLookup>((ref) async {
+  final dir = await getApplicationSupportDirectory();
+  final cacheFile = File('${dir.path}/oui_cache.tsv');
+  unawaited(OuiRefresher().refreshIfStale(cacheFile));
+
   try {
-    final table = parseOuiTsv(await rootBundle.loadString('assets/oui.tsv'));
+    final tsv = await cacheFile.exists()
+        ? await cacheFile.readAsString()
+        : await rootBundle.loadString('assets/oui.tsv');
+    final table = parseOuiTsv(tsv);
     for (final entry in kSeedOuiTable.entries) {
       table.putIfAbsent(entry.key, () => entry.value);
     }
