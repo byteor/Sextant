@@ -50,5 +50,6 @@ List<Device> dedupeMultihomed(List<Device> devices) {
     ));
   }
 
+  result.sort((a, b) => a.ipSortKey.compareTo(b.ipSortKey));
   return result;
 }

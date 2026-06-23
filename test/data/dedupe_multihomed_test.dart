@@ -97,5 +97,23 @@ void main() {
       expect(result.single.ip, '10.0.0.10');
       expect(result.single.additionalIps, ['10.0.0.20', '10.0.0.30']);
     });
+
+    test('multiple distinct MAC groups are returned in ascending IP order', () {
+      final devices = [
+        // Group A: MAC AA:AA... with primary IP 10.0.0.3
+        _dev('10.0.0.3', mac: 'aa:aa:aa:aa:aa:aa'),
+        _dev('10.0.0.4', mac: 'aa:aa:aa:aa:aa:aa'),
+        // Group B: MAC BB:BB... with primary IP 10.0.0.1
+        _dev('10.0.0.1', mac: 'bb:bb:bb:bb:bb:bb'),
+        _dev('10.0.0.2', mac: 'bb:bb:bb:bb:bb:bb'),
+      ];
+
+      final result = dedupeMultihomed(devices);
+
+      expect(result, hasLength(2));
+      // Verify that results are in ascending IP order: 10.0.0.1, then 10.0.0.3
+      expect(result[0].ip, '10.0.0.1');
+      expect(result[1].ip, '10.0.0.3');
+    });
   });
 }
