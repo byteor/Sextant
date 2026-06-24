@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/dedupe_multihomed.dart';
-import 'column_widths.dart';
 import '../data/device_identity.dart';
 import '../data/history_database.dart';
 import '../data/latency_samples.dart';
@@ -27,6 +26,7 @@ import '../model/network_info.dart';
 import '../platform/network_discovery.dart';
 import '../platform/network_monitor.dart';
 import '../scan/scan_orchestrator.dart';
+import 'column_widths.dart';
 import 'scan_state.dart';
 
 /// Loads (and caches) the persisted device-name store.
