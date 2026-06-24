@@ -13,6 +13,7 @@ import '../model/discovery_source.dart';
 import '../model/network_info.dart';
 import '../platform/wake_on_lan.dart';
 import '../scan/well_known_ports.dart';
+import '../state/column_widths.dart';
 import '../state/network_selection.dart';
 import '../state/providers.dart';
 import 'device_visuals.dart';
@@ -296,32 +297,94 @@ class _StatusBar extends ConsumerWidget {
   }
 }
 
-const _kIpWidth = 130.0;
-const _kMacWidth = 150.0;
 const _kIconWidth = 40.0;
 
-class _DeviceTableHeader extends StatelessWidget {
+/// Width of the (invisible, draggable) gap after each resizable column. Must
+/// be identical between the header (where it's interactive) and each
+/// [DeviceRow] (where it's an inert spacer) — see the alignment note in this
+/// file's class docs above `_DeviceTableHeader`.
+const _kHandleWidth = 8.0;
+
+/// The device table's column headers. A [ConsumerWidget] (not
+/// [StatelessWidget], like the rest of this file's static widgets) because it
+/// both reads [columnWidthsProvider] for current widths and renders the
+/// draggable resize handles that write back to it.
+///
+/// IMPORTANT: every fixed-width child here must have an exact-width sibling
+/// in [DeviceRow]'s row, in the same relative position, or the two rows will
+/// drift out of alignment — see [_kHandleWidth]'s doc comment.
+class _DeviceTableHeader extends ConsumerWidget {
   const _DeviceTableHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final widths = ref.watch(columnWidthsProvider);
     final style = Theme.of(context)
         .textTheme
         .labelMedium
         ?.copyWith(fontWeight: FontWeight.bold);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          const SizedBox(width: _kIconWidth),
-          SizedBox(width: _kIpWidth, child: Text('IP address', style: style)),
-          Expanded(flex: 3, child: Text('Name', style: style)),
-          SizedBox(width: _kMacWidth, child: Text('MAC', style: style)),
-          Expanded(flex: 2, child: Text('Vendor', style: style)),
-          Expanded(flex: 3, child: Text('Open ports', style: style)),
-          SizedBox(width: 80, child: Text('Found via', style: style)),
-          SizedBox(width: 56, child: Text('Latency', style: style)),
-        ],
+      // IntrinsicHeight so the resize handles (whose own content is a
+      // zero-height-by-default Center/Container) stretch to the row's
+      // content height instead of collapsing to zero, which would leave
+      // them with nothing to hit-test against.
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            const SizedBox(width: _kIconWidth),
+            SizedBox(
+                width: widths.ip, child: Text('IP address', style: style)),
+            const _ColumnResizeHandle(column: ResizableColumn.ip),
+            SizedBox(width: widths.name, child: Text('Name', style: style)),
+            const _ColumnResizeHandle(column: ResizableColumn.name),
+            SizedBox(width: widths.mac, child: Text('MAC', style: style)),
+            const _ColumnResizeHandle(column: ResizableColumn.mac),
+            SizedBox(
+                width: widths.vendor, child: Text('Vendor', style: style)),
+            const _ColumnResizeHandle(column: ResizableColumn.vendor),
+            Expanded(child: Text('Open ports', style: style)),
+            SizedBox(
+                width: widths.foundVia,
+                child: Text('Found via', style: style)),
+            const _ColumnResizeHandle(column: ResizableColumn.foundVia),
+            SizedBox(
+                width: widths.latency, child: Text('Latency', style: style)),
+            const _ColumnResizeHandle(column: ResizableColumn.latency),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A thin draggable strip after a resizable column's header cell: dragging it
+/// horizontally grows or shrinks that column via [columnWidthsProvider].
+/// [_kHandleWidth] wide, matching the inert spacer [DeviceRow] places in the
+/// same position so header and rows stay aligned.
+class _ColumnResizeHandle extends ConsumerWidget {
+  const _ColumnResizeHandle({required this.column});
+
+  final ResizableColumn column;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      width: _kHandleWidth,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragUpdate: (details) => ref
+              .read(columnWidthsProvider.notifier)
+              .resize(column, details.delta.dx),
+          child: Center(
+            child: Container(
+              width: 1,
+              color: Theme.of(context).dividerColor,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -350,6 +413,7 @@ class DeviceRow extends ConsumerWidget {
       hostname: device.hostname,
       openPorts: device.openPorts,
     );
+    final widths = ref.watch(columnWidthsProvider);
 
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -376,7 +440,7 @@ class DeviceRow extends ConsumerWidget {
             ),
           ),
           SizedBox(
-            width: _kIpWidth,
+            width: widths.ip,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -401,8 +465,9 @@ class DeviceRow extends ConsumerWidget {
               ],
             ),
           ),
-          Expanded(
-            flex: 3,
+          const SizedBox(width: _kHandleWidth),
+          SizedBox(
+            width: widths.name,
             child: Text(
               device.displayName,
               overflow: TextOverflow.ellipsis,
@@ -421,20 +486,22 @@ class DeviceRow extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(width: _kHandleWidth),
           SizedBox(
-            width: _kMacWidth,
+            width: widths.mac,
             child: Text(device.mac ?? '—', style: offline ? mutedSmall : small),
           ),
-          Expanded(
-            flex: 2,
+          const SizedBox(width: _kHandleWidth),
+          SizedBox(
+            width: widths.vendor,
             child: Text(
               device.vendor ?? '—',
               overflow: TextOverflow.ellipsis,
               style: offline ? mutedSmall : small,
             ),
           ),
+          const SizedBox(width: _kHandleWidth),
           Expanded(
-            flex: 3,
             child: Wrap(
               spacing: 4,
               runSpacing: 2,
@@ -445,7 +512,7 @@ class DeviceRow extends ConsumerWidget {
             ),
           ),
           SizedBox(
-            width: 80,
+            width: widths.foundVia,
             child: Wrap(
               spacing: 4,
               children: [
@@ -461,13 +528,15 @@ class DeviceRow extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(width: _kHandleWidth),
           SizedBox(
-            width: 56,
+            width: widths.latency,
             child: ref.watch(latencyHistoryProvider(identity)).maybeWhen(
                   data: (values) => LatencySparkline(values: values),
                   orElse: () => const SizedBox.shrink(),
                 ),
           ),
+          const SizedBox(width: _kHandleWidth),
         ],
       ),
     );
