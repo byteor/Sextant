@@ -18,7 +18,6 @@ import '../state/providers.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
 import 'latency_sparkline.dart';
-import 'topology_screen.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -221,16 +220,6 @@ class _Toolbar extends ConsumerWidget {
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => const HistoryScreen(),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          tooltip: 'Network map',
-          icon: const Icon(Icons.hub_outlined),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const TopologyScreen(),
             ),
           ),
         ),
