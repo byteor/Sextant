@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/dedupe_multihomed.dart';
+import 'column_widths.dart';
 import '../data/device_identity.dart';
 import '../data/history_database.dart';
 import '../data/latency_samples.dart';
@@ -128,6 +129,22 @@ class SelectedNetworkController extends Notifier<ScanNetwork?> {
   ScanNetwork? build() => null;
 
   void select(ScanNetwork? network) => state = network;
+}
+
+/// Current pixel widths of the device table's resizable columns (Task 3 in
+/// `scan_screen.dart` reads and adjusts these). In-memory only — resets to
+/// [ColumnWidths]'s defaults on every app launch.
+final columnWidthsProvider =
+    NotifierProvider<ColumnWidthsController, ColumnWidths>(
+  ColumnWidthsController.new,
+);
+
+class ColumnWidthsController extends Notifier<ColumnWidths> {
+  @override
+  ColumnWidths build() => const ColumnWidths();
+
+  void resize(ResizableColumn column, double delta) =>
+      state = state.resized(column, delta);
 }
 
 final scanControllerProvider =
