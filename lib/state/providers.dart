@@ -49,7 +49,16 @@ final typeOverrideStoreProvider = FutureProvider<TypeOverrideStore>((ref) async 
 /// directory. Opened lazily on first query and closed when the provider is
 /// disposed.
 final historyDatabaseProvider = Provider<HistoryDatabase>((ref) {
-  final db = HistoryDatabase(driftDatabase(name: 'sextant_history'));
+  final db = HistoryDatabase(driftDatabase(
+    name: 'sextant_history',
+    // drift_flutter defaults to getApplicationDocumentsDirectory(), which is
+    // a TCC-protected folder on macOS (the app has no entitlement for it,
+    // unlike the disabled App Sandbox) — opening the database there fails
+    // with SqliteException(14) "unable to open database file". Every other
+    // local store in this app (device names/types, OUI cache) already uses
+    // the app support directory, which isn't TCC-protected; match that.
+    native: DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
+  ));
   ref.onDispose(db.close);
   return db;
 });
