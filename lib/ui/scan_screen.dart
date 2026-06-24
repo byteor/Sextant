@@ -333,23 +333,20 @@ class _DeviceTableHeader extends ConsumerWidget {
         child: Row(
           children: [
             const SizedBox(width: _kIconWidth),
-            SizedBox(
-                width: widths.ip, child: Text('IP address', style: style)),
+            SizedBox(width: widths.ip, child: _headerLabel('IP address', style)),
             const _ColumnResizeHandle(column: ResizableColumn.ip),
-            SizedBox(width: widths.name, child: Text('Name', style: style)),
+            SizedBox(width: widths.name, child: _headerLabel('Name', style)),
             const _ColumnResizeHandle(column: ResizableColumn.name),
-            SizedBox(width: widths.mac, child: Text('MAC', style: style)),
+            SizedBox(width: widths.mac, child: _headerLabel('MAC', style)),
             const _ColumnResizeHandle(column: ResizableColumn.mac),
-            SizedBox(
-                width: widths.vendor, child: Text('Vendor', style: style)),
+            SizedBox(width: widths.vendor, child: _headerLabel('Vendor', style)),
             const _ColumnResizeHandle(column: ResizableColumn.vendor),
-            Expanded(child: Text('Open ports', style: style)),
+            Expanded(child: _headerLabel('Open ports', style)),
             SizedBox(
-                width: widths.foundVia,
-                child: Text('Found via', style: style)),
+                width: widths.foundVia, child: _headerLabel('Found via', style)),
             const _ColumnResizeHandle(column: ResizableColumn.foundVia),
             SizedBox(
-                width: widths.latency, child: Text('Latency', style: style)),
+                width: widths.latency, child: _headerLabel('Latency', style)),
             const _ColumnResizeHandle(column: ResizableColumn.latency),
           ],
         ),
@@ -357,6 +354,17 @@ class _DeviceTableHeader extends ConsumerWidget {
     );
   }
 }
+
+/// A column header label that elides rather than wraps when the column is
+/// narrower than its text — a header label wrapping to multiple lines would
+/// (via this row's `IntrinsicHeight`) inflate every column to match, instead
+/// of just truncating the one label that's too narrow.
+Text _headerLabel(String label, TextStyle? style) => Text(
+      label,
+      style: style,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
 
 /// A thin draggable strip after a resizable column's header cell: dragging it
 /// horizontally grows or shrinks that column via [columnWidthsProvider].

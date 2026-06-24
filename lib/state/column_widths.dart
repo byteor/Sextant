@@ -27,14 +27,22 @@ const _kFoundViaDefaultWidth = 136.0;
 
 /// Current pixel widths of the device table's resizable columns. Immutable —
 /// [resized] returns a new instance with one column adjusted.
+///
+/// These defaults are deliberately tight: their sum (plus the icon column,
+/// six 8px resize handles, and the table's 24px horizontal padding) must fit
+/// within `main.dart`'s `WindowOptions.minimumSize` (820 logical pixels wide)
+/// without overflowing — the device table has no horizontal-scroll fallback,
+/// so anything wider would visibly break the moment a user shrinks the
+/// window to its supported minimum. `test/ui/scan_screen_test.dart` pumps the
+/// table at that exact minimum width and fails if this regresses.
 class ColumnWidths {
   const ColumnWidths({
-    this.ip = 130,
-    this.name = 220,
-    this.mac = 150,
-    this.vendor = 160,
+    this.ip = 120,
+    this.name = 140,
+    this.mac = 130,
+    this.vendor = 110,
     this.foundVia = _kFoundViaDefaultWidth,
-    this.latency = 56,
+    this.latency = 52,
   });
 
   final double ip;

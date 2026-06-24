@@ -57,6 +57,37 @@ void main() {
 
       expect(next.of(ResizableColumn.latency), kMinColumnWidth);
     });
+
+    test('defaults keep the device table within the app\'s minimum window '
+        'width', () {
+      // main.dart's WindowOptions.minimumSize is Size(820, 520) — the
+      // smallest window a user can resize this app down to. The device
+      // table (lib/ui/scan_screen.dart) has no horizontal-scroll fallback,
+      // so its total width — the icon column, the 6 resizable columns, a
+      // resize-handle gap after each of those 6, and the table's 24px
+      // horizontal padding — must fit within that, or the table visibly
+      // overflows the moment someone shrinks the window to its minimum.
+      // Mirrors scan_screen.dart's _kIconWidth/_kHandleWidth; a deliberate,
+      // commented duplication rather than importing a private constant.
+      const minimumWindowWidth = 820.0;
+      const iconWidth = 40.0;
+      const handleWidth = 8.0;
+      const resizableColumnCount = 6;
+      const tablePadding = 24.0;
+
+      const widths = ColumnWidths();
+      final tableWidth = iconWidth +
+          widths.ip +
+          widths.name +
+          widths.mac +
+          widths.vendor +
+          widths.foundVia +
+          widths.latency +
+          resizableColumnCount * handleWidth +
+          tablePadding;
+
+      expect(tableWidth, lessThanOrEqualTo(minimumWindowWidth));
+    });
   });
 
   group('columnWidthsProvider', () {
