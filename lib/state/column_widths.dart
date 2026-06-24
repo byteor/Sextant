@@ -33,8 +33,10 @@ const _kFoundViaDefaultWidth = 136.0;
 /// within `main.dart`'s `WindowOptions.minimumSize` (820 logical pixels wide)
 /// without overflowing — the device table has no horizontal-scroll fallback,
 /// so anything wider would visibly break the moment a user shrinks the
-/// window to its supported minimum. `test/ui/scan_screen_test.dart` pumps the
-/// table at that exact minimum width and fails if this regresses.
+/// window to its supported minimum. The "defaults keep the device table
+/// within the app's minimum window width" test below (in
+/// `column_widths_test.dart`) encodes this exact arithmetic and fails if
+/// this regresses.
 class ColumnWidths {
   const ColumnWidths({
     this.ip = 120,
