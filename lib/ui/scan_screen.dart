@@ -18,7 +18,6 @@ import '../state/network_selection.dart';
 import '../state/providers.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
-import 'latency_sparkline.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -355,6 +354,16 @@ class _DeviceTableHeader extends ConsumerWidget {
   }
 }
 
+/// A label for the most recent reading in [values] (a device's latency
+/// history, oldest-first), rounded to whole milliseconds — matching
+/// [_StatusDot]'s "<1" convention for sub-millisecond latency. Returns null
+/// when there's no reading yet.
+String? latestLatencyLabel(List<double> values) {
+  if (values.isEmpty) return null;
+  final latest = values.last;
+  return '${latest < 1 ? '<1' : latest.round()} ms';
+}
+
 /// A column header label that elides rather than wraps when the column is
 /// narrower than its text — a header label wrapping to multiple lines would
 /// (via this row's `IntrinsicHeight`) inflate every column to match, instead
@@ -547,7 +556,16 @@ class DeviceRow extends ConsumerWidget {
           SizedBox(
             width: widths.latency,
             child: ref.watch(latencyHistoryProvider(identity)).maybeWhen(
-                  data: (values) => LatencySparkline(values: values),
+                  data: (values) {
+                    final label = latestLatencyLabel(values);
+                    if (label == null) return const SizedBox.shrink();
+                    return Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: offline ? mutedSmall : small,
+                    );
+                  },
                   orElse: () => const SizedBox.shrink(),
                 ),
           ),

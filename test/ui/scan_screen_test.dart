@@ -44,6 +44,20 @@ Future<void> _pump(WidgetTester tester, List<Device> devices) async {
 }
 
 void main() {
+  group('latestLatencyLabel', () {
+    test('returns null for no readings', () {
+      expect(latestLatencyLabel([]), isNull);
+    });
+
+    test('rounds the most recent reading to whole milliseconds', () {
+      expect(latestLatencyLabel([4.2, 11.0, 12.6]), '13 ms');
+    });
+
+    test('shows "<1 ms" for sub-millisecond latency', () {
+      expect(latestLatencyLabel([12.0, 0.4]), '<1 ms');
+    });
+  });
+
   testWidgets('there is no "Network map" button in the toolbar', (tester) async {
     await _pump(tester, []);
 
