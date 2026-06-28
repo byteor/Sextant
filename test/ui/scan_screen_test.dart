@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sextant/model/device.dart';
+import 'package:sextant/state/column_widths.dart';
 import 'package:sextant/state/providers.dart';
 import 'package:sextant/state/scan_state.dart';
 import 'package:sextant/ui/scan_screen.dart';
@@ -67,5 +68,21 @@ void main() {
     await tester.pump();
 
     expect(container.read(columnWidthsProvider).ip, before + 30);
+  });
+
+  testWidgets('shrinking the IP column to its minimum ellipsizes the IP '
+      'text instead of overflowing', (tester) async {
+    await _pump(tester, [_dev('192.168.6.225')]);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ScanScreen)),
+    );
+    container
+        .read(columnWidthsProvider.notifier)
+        .resize(ResizableColumn.ip, -1000);
+    await tester.pump();
+
+    expect(container.read(columnWidthsProvider).ip, kMinColumnWidth);
+    expect(tester.takeException(), isNull);
   });
 }

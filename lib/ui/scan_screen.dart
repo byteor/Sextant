@@ -450,13 +450,15 @@ class DeviceRow extends ConsumerWidget {
           SizedBox(
             width: widths.ip,
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  device.ip,
-                  style: TextStyle(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                    color: offline ? muted : null,
+                Expanded(
+                  child: Text(
+                    device.ip,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: offline ? muted : null,
+                    ),
                   ),
                 ),
                 if (device.additionalIps.isNotEmpty)
@@ -497,7 +499,12 @@ class DeviceRow extends ConsumerWidget {
           const SizedBox(width: _kHandleWidth),
           SizedBox(
             width: widths.mac,
-            child: Text(device.mac ?? '—', style: offline ? mutedSmall : small),
+            child: Text(
+              device.mac ?? '—',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: offline ? mutedSmall : small,
+            ),
           ),
           const SizedBox(width: _kHandleWidth),
           SizedBox(
