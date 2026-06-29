@@ -16,6 +16,13 @@ void main() {
   // for the first time; once build() starts on the fake-async zone, no
   // later runAsync call can rescue that already-pending Future.
   Future<ProviderContainer> pumpSettings(WidgetTester tester) async {
+    // The Settings screen's sections stack taller than the default 800x600
+    // test surface; without a taller surface the lazy ListView never builds
+    // the lower sections (History, Vendor database), so their widgets can't
+    // be found. Widen the *test* surface only — production layout scrolls.
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final tempDir = await tester.runAsync(
       () => Directory.systemTemp.createTemp('sextant_settings_screen_test'),
     );
@@ -74,5 +81,20 @@ void main() {
       container.read(settingsProvider).value!.enabledProtocols,
       isNot(contains(ScanProtocol.mdns)),
     );
+  });
+
+  testWidgets('shows a history enable switch and a retention dropdown',
+      (tester) async {
+    await pumpSettings(tester);
+    expect(find.text('Save scan history'), findsOneWidget);
+    expect(find.text('500'), findsOneWidget); // default retention
+  });
+
+  testWidgets('turning history off updates settingsProvider', (tester) async {
+    final container = await pumpSettings(tester);
+    await tester.tap(find.text('Save scan history'));
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(container.read(settingsProvider).value!.historyEnabled, isFalse);
   });
 }

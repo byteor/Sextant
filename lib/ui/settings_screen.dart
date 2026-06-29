@@ -22,6 +22,7 @@ class SettingsScreen extends ConsumerWidget {
           children: const [
             _AppearanceSection(),
             _ScanningSection(),
+            _HistorySection(),
           ],
         ),
       ),
@@ -116,6 +117,50 @@ class _ScanningSection extends ConsumerWidget {
                     .read(settingsProvider.notifier)
                     .setProtocolEnabled(protocol, v),
           ),
+        const Divider(height: 24),
+      ],
+    );
+  }
+}
+
+const _retentionPresets = [100, 250, 500, 1000, 2000];
+
+class _HistorySection extends ConsumerWidget {
+  const _HistorySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider).value ?? const AppSettings();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader('History'),
+        SwitchListTile(
+          title: const Text('Save scan history'),
+          value: settings.historyEnabled,
+          onChanged: (v) =>
+              ref.read(settingsProvider.notifier).setHistoryEnabled(v),
+        ),
+        ListTile(
+          title: const Text('Retention'),
+          subtitle: const Text('Maximum saved scan snapshots'),
+          enabled: settings.historyEnabled,
+          trailing: DropdownButton<int>(
+            value: settings.historyRetention,
+            items: [
+              for (final r in _retentionPresets)
+                DropdownMenuItem(value: r, child: Text('$r')),
+            ],
+            onChanged: !settings.historyEnabled
+                ? null
+                : (r) => r == null
+                    ? null
+                    : ref
+                        .read(settingsProvider.notifier)
+                        .setHistoryRetention(r),
+          ),
+        ),
         const Divider(height: 24),
       ],
     );

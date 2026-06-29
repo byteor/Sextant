@@ -21,6 +21,7 @@ import '../enrich/liveness.dart';
 import '../enrich/oui_refresh.dart';
 import '../enrich/oui_seed.dart';
 import '../enrich/oui_vendor_lookup.dart';
+import '../model/app_settings.dart';
 import '../model/device.dart';
 import '../model/discovery_source.dart';
 import '../model/network_info.dart';
@@ -82,12 +83,9 @@ final historyDatabaseProvider = Provider<HistoryDatabase>((ref) {
 final scanHistoryProvider =
     FutureProvider<List<NetworkScanHistory>>((ref) async {
   final db = ref.watch(historyDatabaseProvider);
-  return groupByNetwork(await db.recentScans(limit: _historyRetention));
+  final settings = await ref.watch(settingsProvider.future);
+  return groupByNetwork(await db.recentScans(limit: settings.historyRetention));
 });
-
-/// Upper bound on retained scan snapshots, enforced on every save so live
-/// monitoring can't grow the history file without limit.
-const _historyRetention = 500;
 
 /// The recent latency history for one device (by stable identity), used to
 /// draw its sparkline. Invalidated whenever new samples are recorded.
@@ -375,11 +373,14 @@ class ScanController extends Notifier<ScanState> {
     return diff;
   }
 
-  /// Persists [devices] as a history snapshot for [network] (capped at
-  /// [_historyRetention]) and refreshes the history view. Empty results aren't
+  /// Persists [devices] as a history snapshot for [network] (capped at the
+  /// configured retention) and refreshes the history view. Skipped entirely
+  /// when history saving is turned off in Settings. Empty results aren't
   /// recorded — a scan that found nothing is noise, not history.
   Future<void> _saveHistory(ScanNetwork network, List<Device> devices) async {
     if (devices.isEmpty) return;
+    final settings = ref.read(settingsProvider).value ?? const AppSettings();
+    if (!settings.historyEnabled) return;
     final db = ref.read(historyDatabaseProvider);
     await db.saveScan(
       ScanRecord(
@@ -388,7 +389,7 @@ class ScanController extends Notifier<ScanState> {
         timestamp: DateTime.now(),
         devices: devices,
       ),
-      maxScans: _historyRetention,
+      maxScans: settings.historyRetention,
     );
     ref.invalidate(scanHistoryProvider);
   }
