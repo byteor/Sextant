@@ -16,6 +16,7 @@ import '../scan/well_known_ports.dart';
 import '../state/column_widths.dart';
 import '../state/network_selection.dart';
 import '../state/providers.dart';
+import 'about_dialog.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
 
@@ -222,6 +223,36 @@ class _Toolbar extends ConsumerWidget {
               builder: (_) => const HistoryScreen(),
             ),
           ),
+        ),
+        const Spacer(),
+        Consumer(
+          builder: (context, ref, _) {
+            final version = ref.watch(appVersionProvider);
+            return version.maybeWhen(
+              data: (v) => Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    v,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ),
+              orElse: () => const SizedBox.shrink(),
+            );
+          },
+        ),
+        IconButton(
+          tooltip: 'About',
+          icon: const Icon(Icons.info_outline),
+          onPressed: () => ref
+              .watch(appVersionProvider)
+              .maybeWhen(
+                data: (v) => showSextantAboutDialog(context, v),
+                orElse: () {},
+              ),
         ),
       ],
     );

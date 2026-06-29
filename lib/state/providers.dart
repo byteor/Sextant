@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../data/build_counter_store.dart';
 import '../data/dedupe_multihomed.dart';
 import '../data/device_identity.dart';
 import '../data/history_database.dart';
@@ -26,6 +27,7 @@ import '../model/network_info.dart';
 import '../platform/network_discovery.dart';
 import '../platform/network_monitor.dart';
 import '../scan/scan_orchestrator.dart';
+import '../version.dart';
 import 'column_widths.dart';
 import 'scan_state.dart';
 
@@ -43,6 +45,15 @@ final typeOverrideStoreProvider = FutureProvider<TypeOverrideStore>((ref) async 
   final store = TypeOverrideStore(File('${dir.path}/device_types.json'));
   await store.load();
   return store;
+});
+
+/// The displayed `major.minor.build` version string. The build number is a
+/// small persisted counter, incremented once per app launch.
+final appVersionProvider = FutureProvider<String>((ref) async {
+  final dir = await getApplicationSupportDirectory();
+  final store = BuildCounterStore(File('${dir.path}/build_counter.json'));
+  final build = await store.loadAndIncrement();
+  return formatVersion(build);
 });
 
 /// The on-disk scan-history database (Drift), stored in the app support
