@@ -44,4 +44,20 @@ void main() {
     await file.writeAsString('not json{{{');
     expect(await SettingsStore(file).load(), const AppSettings());
   });
+
+  test('valid JSON of the wrong shape (an array) falls back to defaults',
+      () async {
+    await file.create(recursive: true);
+    await file.writeAsString('[1, 2, 3]');
+    expect(await SettingsStore(file).load(), const AppSettings());
+  });
+
+  test('a wrong-typed field (float where int expected) falls back to defaults',
+      () async {
+    await file.create(recursive: true);
+    // A hand-edited file with a float where the loader does `as int?` would
+    // throw a TypeError mid-parse; load() must still fall back, not crash.
+    await file.writeAsString('{"monitorIntervalSeconds": 30.0}');
+    expect(await SettingsStore(file).load(), const AppSettings());
+  });
 }

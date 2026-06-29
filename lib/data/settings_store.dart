@@ -35,7 +35,13 @@ class SettingsStore {
         vendorDbRefreshIntervalDays:
             decoded['vendorDbRefreshIntervalDays'] as int? ?? 30,
       );
-    } on FormatException {
+    } catch (_) {
+      // Any malformed settings file — invalid JSON (FormatException) or a
+      // wrong-typed field, e.g. a hand-edited `"monitorIntervalSeconds": 30.0`
+      // that fails an `as int?` cast (TypeError) — falls back to defaults
+      // rather than crashing. settingsProvider's value is awaited by other
+      // providers (scan/history/vendor lookups), so a throw here would cascade
+      // into failed scans; defaults keep the app working.
       return const AppSettings();
     }
   }

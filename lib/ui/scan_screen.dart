@@ -249,7 +249,7 @@ class _Toolbar extends ConsumerWidget {
           tooltip: 'About',
           icon: const Icon(Icons.info_outline),
           onPressed: () => ref
-              .watch(appVersionProvider)
+              .read(appVersionProvider)
               .maybeWhen(
                 data: (v) => showSextantAboutDialog(context, v),
                 orElse: () {},
