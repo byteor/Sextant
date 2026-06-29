@@ -23,7 +23,11 @@ Device _dev(String ip) {
   return Device(ip: ip, firstSeen: t, lastSeen: t);
 }
 
-Future<void> _pump(WidgetTester tester, List<Device> devices) async {
+Future<void> _pump(
+  WidgetTester tester,
+  List<Device> devices, {
+  ScanState? state,
+}) async {
   // The device table's fixed-width columns (plus the toolbar) need more
   // horizontal space than flutter_test's default 800x600 surface, which
   // would otherwise overflow the Row before this test gets to interact with
@@ -47,8 +51,9 @@ Future<void> _pump(WidgetTester tester, List<Device> devices) async {
       }));
 
   final container = ProviderContainer(overrides: [
-    scanControllerProvider
-        .overrideWith(() => _FixedScanController(ScanState(devices: devices))),
+    scanControllerProvider.overrideWith(
+      () => _FixedScanController(state ?? ScanState(devices: devices)),
+    ),
     networksProvider.overrideWith((ref) async => []),
     // appVersionProvider normally reads the app-support directory via
     // path_provider, whose platform channel isn't mocked under plain
@@ -86,6 +91,67 @@ void main() {
     test('shows "<1 ms" for sub-millisecond latency', () {
       expect(latestLatencyLabel([12.0, 0.4]), '<1 ms');
     });
+  });
+
+  group('ScanState.backgroundProgress', () {
+    test('is 0 when the host count is not yet known (avoids divide-by-zero)',
+        () {
+      expect(const ScanState(backgroundTotal: 0).backgroundProgress, 0);
+    });
+
+    test('is scanned/total once the host count is known', () {
+      expect(
+        const ScanState(backgroundScanned: 3, backgroundTotal: 12)
+            .backgroundProgress,
+        0.25,
+      );
+    });
+  });
+
+  testWidgets('the version/About/Settings group is flush to the right edge',
+      (tester) async {
+    await _pump(tester, []);
+    // The Settings button is the right-most toolbar item; it must sit flush
+    // against the toolbar's right edge — only the AppBar's titleSpacing (16)
+    // plus a few px of icon padding should separate it from the 1400px surface
+    // edge (~20px measured). With the version text wrongly wrapped in Flexible
+    // it competed with the Spacer for flex space and floated ~67px from the
+    // edge instead.
+    final settingsRight = tester.getTopRight(find.byTooltip('Settings')).dx;
+    expect(1400 - settingsRight, lessThan(40));
+  });
+
+  testWidgets('a background monitor re-scan shows a determinate progress bar',
+      (tester) async {
+    await _pump(
+      tester,
+      [],
+      state: const ScanState(
+        isMonitoring: true,
+        isBackgroundScanning: true,
+        backgroundScanned: 3,
+        backgroundTotal: 12,
+      ),
+    );
+
+    final bar = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.byType(LinearProgressIndicator),
+    );
+    expect(bar, findsOneWidget);
+    expect(tester.widget<LinearProgressIndicator>(bar).value, closeTo(0.25, 1e-9));
+  });
+
+  testWidgets('an idle (non-scanning) state shows no progress bar',
+      (tester) async {
+    await _pump(tester, []);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(LinearProgressIndicator),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('there is no "Network map" button in the toolbar', (tester) async {

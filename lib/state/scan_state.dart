@@ -10,6 +10,9 @@ class ScanState {
     this.enriching = false,
     this.isMonitoring = false,
     this.lastNewDevices = const [],
+    this.isBackgroundScanning = false,
+    this.backgroundScanned = 0,
+    this.backgroundTotal = 0,
   });
 
   final bool isScanning;
@@ -31,9 +34,24 @@ class ScanState {
   /// new-device alert; reset to empty on each subsequent scan.
   final List<Device> lastNewDevices;
 
+  /// True while a *background* monitor re-scan is in flight. Unlike
+  /// [isScanning], this never touches the on-screen device list (the no-flicker
+  /// monitoring design) — it exists only so the UI can show a progress bar for
+  /// the otherwise-invisible periodic re-scan.
+  final bool isBackgroundScanning;
+
+  /// Host-sweep progress for the in-flight background re-scan (kept separate
+  /// from [scanned]/[total] so a background tick can't disturb a foreground
+  /// scan's progress display, and vice versa).
+  final int backgroundScanned;
+  final int backgroundTotal;
+
   bool get isBusy => isScanning || enriching;
 
   double get progress => total == 0 ? 0 : scanned / total;
+
+  double get backgroundProgress =>
+      backgroundTotal == 0 ? 0 : backgroundScanned / backgroundTotal;
 
   ScanState copyWith({
     bool? isScanning,
@@ -43,6 +61,9 @@ class ScanState {
     bool? enriching,
     bool? isMonitoring,
     List<Device>? lastNewDevices,
+    bool? isBackgroundScanning,
+    int? backgroundScanned,
+    int? backgroundTotal,
   }) {
     return ScanState(
       isScanning: isScanning ?? this.isScanning,
@@ -52,6 +73,9 @@ class ScanState {
       enriching: enriching ?? this.enriching,
       isMonitoring: isMonitoring ?? this.isMonitoring,
       lastNewDevices: lastNewDevices ?? this.lastNewDevices,
+      isBackgroundScanning: isBackgroundScanning ?? this.isBackgroundScanning,
+      backgroundScanned: backgroundScanned ?? this.backgroundScanned,
+      backgroundTotal: backgroundTotal ?? this.backgroundTotal,
     );
   }
 }

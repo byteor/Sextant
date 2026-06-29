@@ -80,14 +80,20 @@ class ScanScreen extends ConsumerWidget {
             ),
           ],
         ),
-        bottom: scan.isScanning
+        bottom: scan.isScanning || scan.isBackgroundScanning
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(3),
                 child: LinearProgressIndicator(
                   minHeight: 3,
                   // Determinate once we know the subnet size; indeterminate
-                  // for the brief moment before the host count is known.
-                  value: scan.total > 0 ? scan.progress : null,
+                  // for the brief moment before the host count is known. A
+                  // background monitor re-scan shows the same bar, driven by
+                  // its own progress so it doesn't disturb a foreground scan.
+                  value: scan.isScanning
+                      ? (scan.total > 0 ? scan.progress : null)
+                      : (scan.backgroundTotal > 0
+                          ? scan.backgroundProgress
+                          : null),
                 ),
               )
             : null,
@@ -230,15 +236,20 @@ class _Toolbar extends ConsumerWidget {
           builder: (context, ref, _) {
             final version = ref.watch(appVersionProvider);
             return version.maybeWhen(
-              data: (v) => Flexible(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    v,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+              // No Flexible here: the Spacer above must be the Row's only flex
+              // child so it absorbs all free space and pushes the version /
+              // About / Settings group flush to the right edge. Wrapping the
+              // version in Flexible made it compete with the Spacer for flex
+              // space, leaving the group floating mid-toolbar with a gap to its
+              // right. The version string is short and fixed-format, so it
+              // needs no shrink-to-fit.
+              data: (v) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  v,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
               orElse: () => const SizedBox.shrink(),

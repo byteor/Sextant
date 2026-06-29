@@ -313,6 +313,10 @@ class ScanController extends Notifier<ScanState> {
     _monitorTimer = null;
     _monitorSub?.cancel();
     _monitorSub = null;
+    // Cancelling _monitorSub mid-scan means the in-flight _backgroundScan's
+    // onDone never fires, so its own `isBackgroundScanning = false` won't run —
+    // clear the progress-bar flag here so the bar doesn't linger after stop.
+    state = state.copyWith(isBackgroundScanning: false);
     _emit();
   }
 
@@ -344,7 +348,21 @@ class ScanController extends Notifier<ScanState> {
     final byIp = <String, Device>{};
     final orchestrator = _buildOrchestrator();
     final completer = Completer<void>();
-    _monitorSub = orchestrator.scan(network).listen(
+    // Surface the otherwise-invisible re-scan as a progress bar, without
+    // touching the displayed device list. Progress lives in dedicated
+    // background fields so it can't collide with a foreground scan's display.
+    state = state.copyWith(
+      isBackgroundScanning: true,
+      backgroundScanned: 0,
+      backgroundTotal: network.subnet.hostAddresses().length,
+    );
+    _monitorSub = orchestrator
+        .scan(
+      network,
+      onHostComplete: (done, _) =>
+          state = state.copyWith(backgroundScanned: done),
+    )
+        .listen(
       (observation) {
         final merged = _merge(byIp[observation.ip], observation);
         byIp[observation.ip] = _decorate(merged, store, typeStore);
@@ -354,6 +372,7 @@ class ScanController extends Notifier<ScanState> {
       cancelOnError: false,
     );
     await completer.future;
+    state = state.copyWith(isBackgroundScanning: false);
     return byIp.values.toList();
   }
 
