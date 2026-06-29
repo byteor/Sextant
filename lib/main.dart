@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'state/settings.dart';
 import 'ui/scan_screen.dart';
 
 Future<void> main() async {
@@ -30,15 +31,30 @@ Future<void> main() async {
   runApp(const ProviderScope(child: SextantApp()));
 }
 
-class SextantApp extends StatelessWidget {
+class SextantApp extends ConsumerWidget {
   const SextantApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Falls back to dark (today's fixed look) while settings are loading or
+    // if they fail to load, so the very first frame is never broken.
+    final themeMode =
+        ref.watch(settingsProvider).value?.themeMode ?? ThemeMode.dark;
+
     return MaterialApp(
       title: 'Sextant',
       debugShowCheckedModeBanner: false,
+      themeMode: themeMode,
       theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4C8DFF),
+          brightness: Brightness.light,
+        ),
+        visualDensity: VisualDensity.compact,
+      ),
+      darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(

@@ -1,0 +1,59 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/state/settings.dart';
+import 'package:sextant/ui/settings_screen.dart';
+
+void main() {
+  // settingsProvider's build() (and setThemeMode's persistence write) do
+  // real dart:io File/Directory operations. Those must run via
+  // tester.runAsync() — flutter_test's fake-async zone never resolves real
+  // IO Futures — and the provider must be pre-warmed (read once inside
+  // runAsync) *before* any widget pump triggers ref.watch(settingsProvider)
+  // for the first time; once build() starts on the fake-async zone, no
+  // later runAsync call can rescue that already-pending Future.
+  Future<ProviderContainer> pumpSettings(WidgetTester tester) async {
+    final tempDir = await tester.runAsync(
+      () => Directory.systemTemp.createTemp('sextant_settings_screen_test'),
+    );
+    addTearDown(() => tester.runAsync(() async {
+          if (await tempDir!.exists()) await tempDir.delete(recursive: true);
+        }));
+
+    final container = ProviderContainer(overrides: [
+      settingsFileDirProvider.overrideWith((ref) async => tempDir!.path),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.runAsync(() => container.read(settingsProvider.future));
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+    await tester.pump();
+    return container;
+  }
+
+  testWidgets('shows Light, Dark, and Auto theme options', (tester) async {
+    await pumpSettings(tester);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('Auto'), findsOneWidget);
+  });
+
+  testWidgets('selecting Light updates settingsProvider', (tester) async {
+    final container = await pumpSettings(tester);
+    await tester.tap(find.text('Light'));
+    await tester.pump();
+    // setThemeMode's state update is synchronous; its fire-and-forget
+    // persistence write is real IO, given a turn on the real event loop so
+    // it doesn't leak a pending Future past the test's end.
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(container.read(settingsProvider).value!.themeMode, ThemeMode.light);
+  });
+}

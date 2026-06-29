@@ -19,6 +19,7 @@ import '../state/providers.dart';
 import 'about_dialog.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
+import 'settings_screen.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -253,6 +254,15 @@ class _Toolbar extends ConsumerWidget {
                 data: (v) => showSextantAboutDialog(context, v),
                 orElse: () {},
               ),
+        ),
+        IconButton(
+          tooltip: 'Settings',
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const SettingsScreen(),
+            ),
+          ),
         ),
       ],
     );

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,7 @@ import 'package:sextant/model/device.dart';
 import 'package:sextant/state/column_widths.dart';
 import 'package:sextant/state/providers.dart';
 import 'package:sextant/state/scan_state.dart';
+import 'package:sextant/state/settings.dart';
 import 'package:sextant/ui/scan_screen.dart';
 
 class _FixedScanController extends ScanController {
@@ -29,18 +32,40 @@ Future<void> _pump(WidgetTester tester, List<Device> devices) async {
   await tester.binding.setSurfaceSize(const Size(1400, 800));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
+  // settingsProvider's build() does real dart:io File/Directory operations
+  // (via the settingsFileDirProvider override below), which never complete
+  // if first triggered inside flutter_test's fake-async zone — they must run
+  // via tester.runAsync() on the real event loop, and the provider must be
+  // pre-warmed (read once inside runAsync) *before* any widget pump triggers
+  // ref.watch(settingsProvider) for the first time, since the Settings
+  // screen pushed by the toolbar's gear button watches it.
+  final tempDir = await tester.runAsync(
+    () => Directory.systemTemp.createTemp('sextant_scan_screen_test'),
+  );
+  addTearDown(() => tester.runAsync(() async {
+        if (await tempDir!.exists()) await tempDir.delete(recursive: true);
+      }));
+
+  final container = ProviderContainer(overrides: [
+    scanControllerProvider
+        .overrideWith(() => _FixedScanController(ScanState(devices: devices))),
+    networksProvider.overrideWith((ref) async => []),
+    // appVersionProvider normally reads the app-support directory via
+    // path_provider, whose platform channel isn't mocked under plain
+    // flutter_test — overridden here so the toolbar's version text has
+    // something deterministic to render.
+    appVersionProvider.overrideWith((ref) async => '1.0.1'),
+    // settingsProvider also reads the app-support directory via
+    // path_provider — overridden so opening the Settings screen
+    // (pushed on top of this widget tree) resolves deterministically.
+    settingsFileDirProvider.overrideWith((ref) async => tempDir!.path),
+  ]);
+  addTearDown(container.dispose);
+  await tester.runAsync(() => container.read(settingsProvider.future));
+
   await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        scanControllerProvider
-            .overrideWith(() => _FixedScanController(ScanState(devices: devices))),
-        networksProvider.overrideWith((ref) async => []),
-        // appVersionProvider normally reads the app-support directory via
-        // path_provider, whose platform channel isn't mocked under plain
-        // flutter_test — overridden here so the toolbar's version text has
-        // something deterministic to render.
-        appVersionProvider.overrideWith((ref) async => '1.0.1'),
-      ],
+    UncontrolledProviderScope(
+      container: container,
       child: const MaterialApp(home: ScanScreen()),
     ),
   );
@@ -112,5 +137,13 @@ void main() {
 
     expect(find.byTooltip('About'), findsOneWidget);
     expect(find.textContaining('1.0.'), findsOneWidget);
+  });
+
+  testWidgets('the toolbar has a Settings button that opens SettingsScreen',
+      (tester) async {
+    await _pump(tester, []);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsWidgets); // AppBar title + tooltip text
   });
 }
