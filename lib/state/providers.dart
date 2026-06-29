@@ -30,8 +30,8 @@ import '../platform/network_monitor.dart';
 import '../scan/scan_orchestrator.dart';
 import '../version.dart';
 import 'column_widths.dart';
-import 'settings.dart';
 import 'scan_state.dart';
+import 'settings.dart';
 
 /// Loads (and caches) the persisted device-name store.
 final renameStoreProvider = FutureProvider<RenameStore>((ref) async {
@@ -271,7 +271,8 @@ class ScanController extends Notifier<ScanState> {
 
   /// Turns live monitoring on or off. On enable, if the list is empty it runs a
   /// visible baseline scan to populate it; thereafter it re-scans every
-  /// configured refresh interval. Each periodic re-scan runs *entirely in the background*
+  /// configured refresh interval. Each periodic re-scan runs *entirely in the
+  /// background*
   /// (the on-screen list is untouched while it runs) and only when it completes
   /// is the result reconciled into the list: new devices added, missing ones
   /// greyed out (kept, not deleted), changed ones updated — and newly-appeared
