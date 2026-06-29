@@ -97,4 +97,11 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     expect(container.read(settingsProvider).value!.historyEnabled, isFalse);
   });
+
+  testWidgets('shows a refresh-now button and an autorefresh toggle',
+      (tester) async {
+    await pumpSettings(tester);
+    expect(find.text('Refresh now'), findsOneWidget);
+    expect(find.text('Auto-refresh vendor database'), findsOneWidget);
+  });
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/app_settings.dart';
 import '../model/scan_protocol.dart';
+import '../state/providers.dart';
 import '../state/settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -23,6 +24,7 @@ class SettingsScreen extends ConsumerWidget {
             _AppearanceSection(),
             _ScanningSection(),
             _HistorySection(),
+            _VendorDatabaseSection(),
           ],
         ),
       ),
@@ -164,5 +166,66 @@ class _HistorySection extends ConsumerWidget {
         const Divider(height: 24),
       ],
     );
+  }
+}
+
+const _vendorDbIntervalPresets = [7, 14, 30, 90];
+
+class _VendorDatabaseSection extends ConsumerWidget {
+  const _VendorDatabaseSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider).value ?? const AppSettings();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader('Vendor database'),
+        ListTile(
+          title: const Text('Update from the IEEE registry'),
+          subtitle: const Text('Improves MAC-address vendor names'),
+          trailing: FilledButton(
+            onPressed: () => _refreshNow(context, ref),
+            child: const Text('Refresh now'),
+          ),
+        ),
+        SwitchListTile(
+          title: const Text('Auto-refresh vendor database'),
+          value: settings.vendorDbAutoRefresh,
+          onChanged: (v) => ref
+              .read(settingsProvider.notifier)
+              .setVendorDbAutoRefresh(v),
+        ),
+        ListTile(
+          title: const Text('Auto-refresh interval'),
+          enabled: settings.vendorDbAutoRefresh,
+          trailing: DropdownButton<int>(
+            value: settings.vendorDbRefreshIntervalDays,
+            items: [
+              for (final d in _vendorDbIntervalPresets)
+                DropdownMenuItem(value: d, child: Text('$d days')),
+            ],
+            onChanged: !settings.vendorDbAutoRefresh
+                ? null
+                : (d) => d == null
+                    ? null
+                    : ref
+                        .read(settingsProvider.notifier)
+                        .setVendorDbRefreshIntervalDays(d),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _refreshNow(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final refreshed = await refreshVendorDatabaseNow(ref);
+    messenger.showSnackBar(SnackBar(
+      content: Text(refreshed
+          ? 'Vendor database refreshed.'
+          : 'Could not refresh vendor database — check your connection.'),
+    ));
   }
 }

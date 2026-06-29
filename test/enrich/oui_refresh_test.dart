@@ -118,4 +118,43 @@ void main() {
       expect(refreshed, isFalse);
     });
   });
+
+  group('OuiRefresher.refreshNow', () {
+    late Directory tempDir;
+    late File cacheFile;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('oui_refresh_now_test');
+      cacheFile = File('${tempDir.path}/oui_cache.tsv');
+    });
+
+    tearDown(() => tempDir.deleteSync(recursive: true));
+
+    test('re-fetches even when the cache is fresh', () async {
+      await cacheFile.writeAsString('AABBCC\tOld Vendor\n');
+      var fetchCount = 0;
+      final refresher = OuiRefresher(fetch: (uri) async {
+        fetchCount++;
+        return 'Registry,Assignment,Organization Name,Address\n'
+            'MA-L,AABBCC,New Vendor,Addr\n';
+      });
+
+      final refreshed = await refresher.refreshNow(cacheFile);
+
+      expect(refreshed, isTrue);
+      expect(fetchCount, 1);
+      expect(parseOuiTsv(await cacheFile.readAsString()), {'AABBCC': 'New Vendor'});
+    });
+
+    test('returns false and does not refetch-write when the fetch fails',
+        () async {
+      await cacheFile.writeAsString('AABBCC\tOld Vendor\n');
+      final refresher = OuiRefresher(fetch: (uri) async => null);
+
+      final refreshed = await refresher.refreshNow(cacheFile);
+
+      expect(refreshed, isFalse);
+      expect(await cacheFile.readAsString(), 'AABBCC\tOld Vendor\n');
+    });
+  });
 }

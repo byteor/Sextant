@@ -108,18 +108,35 @@ class OuiRefresher {
         final age = DateTime.now().difference(await cacheFile.lastModified());
         if (age < maxAge) return false;
       }
-      final csv = await _fetch(source);
-      if (csv == null) return false;
-      final table = parseOuiCsv(csv);
-      if (table.isEmpty) return false;
-      await cacheFile.create(recursive: true);
-      await cacheFile.writeAsString(ouiTableToTsv(table));
-      return true;
+      return await _fetchAndWrite(cacheFile);
     } on FileSystemException {
       // File I/O errors (permissions, disk full, path conflicts, etc.) are
       // independent of network failures and should not crash the app; the
       // existing cache remains a fallback.
       return false;
     }
+  }
+
+  /// Refreshes [cacheFile] unconditionally, ignoring its age. Used by the
+  /// Settings screen's manual "Refresh now" action.
+  Future<bool> refreshNow(File cacheFile) async {
+    try {
+      return await _fetchAndWrite(cacheFile);
+    } on FileSystemException {
+      return false;
+    }
+  }
+
+  /// Fetches the registry and overwrites [cacheFile] with it. Returns false
+  /// (leaving any existing cache intact) on a failed fetch, non-200, or empty
+  /// parse.
+  Future<bool> _fetchAndWrite(File cacheFile) async {
+    final csv = await _fetch(source);
+    if (csv == null) return false;
+    final table = parseOuiCsv(csv);
+    if (table.isEmpty) return false;
+    await cacheFile.create(recursive: true);
+    await cacheFile.writeAsString(ouiTableToTsv(table));
+    return true;
   }
 }

@@ -106,7 +106,12 @@ final latencyHistoryProvider =
 final ouiLookupProvider = FutureProvider<OuiVendorLookup>((ref) async {
   final dir = await getApplicationSupportDirectory();
   final cacheFile = File('${dir.path}/oui_cache.tsv');
-  unawaited(OuiRefresher().refreshIfStale(cacheFile));
+  final settings = await ref.watch(settingsProvider.future);
+  if (settings.vendorDbAutoRefresh) {
+    unawaited(OuiRefresher(
+      maxAge: Duration(days: settings.vendorDbRefreshIntervalDays),
+    ).refreshIfStale(cacheFile));
+  }
 
   try {
     final tsv = await cacheFile.exists()
@@ -121,6 +126,18 @@ final ouiLookupProvider = FutureProvider<OuiVendorLookup>((ref) async {
     return const OuiVendorLookup(kSeedOuiTable);
   }
 });
+
+/// Forces an immediate vendor-database refresh, bypassing the staleness check,
+/// and invalidates [ouiLookupProvider] so the new table takes effect. Returns
+/// whether the refresh actually fetched new data. Takes a [WidgetRef] since
+/// it's triggered from the Settings screen's "Refresh now" button.
+Future<bool> refreshVendorDatabaseNow(WidgetRef ref) async {
+  final dir = await getApplicationSupportDirectory();
+  final cacheFile = File('${dir.path}/oui_cache.tsv');
+  final refreshed = await OuiRefresher().refreshNow(cacheFile);
+  if (refreshed) ref.invalidate(ouiLookupProvider);
+  return refreshed;
+}
 
 /// The active local networks, Wi-Fi first so the UI can default to it.
 final networksProvider = FutureProvider<List<ScanNetwork>>(
