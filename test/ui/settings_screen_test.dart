@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/model/scan_protocol.dart';
 import 'package:sextant/state/settings.dart';
 import 'package:sextant/ui/settings_screen.dart';
 
@@ -55,5 +56,23 @@ void main() {
     // it doesn't leak a pending Future past the test's end.
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     expect(container.read(settingsProvider).value!.themeMode, ThemeMode.light);
+  });
+
+  testWidgets('shows a toggle for every scan protocol', (tester) async {
+    await pumpSettings(tester);
+    for (final p in ScanProtocol.values) {
+      expect(find.text(p.label), findsOneWidget);
+    }
+  });
+
+  testWidgets('disabling a protocol updates settingsProvider', (tester) async {
+    final container = await pumpSettings(tester);
+    await tester.tap(find.text(ScanProtocol.mdns.label));
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(
+      container.read(settingsProvider).value!.enabledProtocols,
+      isNot(contains(ScanProtocol.mdns)),
+    );
   });
 }

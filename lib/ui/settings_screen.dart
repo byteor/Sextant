@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../model/app_settings.dart';
+import '../model/scan_protocol.dart';
 import '../state/settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -19,6 +21,7 @@ class SettingsScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: const [
             _AppearanceSection(),
+            _ScanningSection(),
           ],
         ),
       ),
@@ -63,6 +66,56 @@ class _AppearanceSection extends ConsumerWidget {
                 .setThemeMode(selection.first),
           ),
         ),
+        const Divider(height: 24),
+      ],
+    );
+  }
+}
+
+const _intervalPresets = [10, 30, 60, 120, 300];
+String _intervalLabel(int seconds) =>
+    seconds < 60 ? '${seconds}s' : '${seconds ~/ 60} min';
+
+class _ScanningSection extends ConsumerWidget {
+  const _ScanningSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider).value ?? const AppSettings();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader('Scanning'),
+        ListTile(
+          title: const Text('Auto-refresh interval'),
+          trailing: DropdownButton<int>(
+            value: settings.monitorIntervalSeconds,
+            items: [
+              for (final s in _intervalPresets)
+                DropdownMenuItem(value: s, child: Text(_intervalLabel(s))),
+            ],
+            onChanged: (s) => s == null
+                ? null
+                : ref
+                    .read(settingsProvider.notifier)
+                    .setMonitorIntervalSeconds(s),
+          ),
+        ),
+        for (final protocol in ScanProtocol.values)
+          SwitchListTile(
+            title: Text(protocol.label),
+            subtitle: protocol.isAvailableOnThisPlatform
+                ? null
+                : const Text('Not available on this platform'),
+            value: protocol.isAvailableOnThisPlatform &&
+                settings.enabledProtocols.contains(protocol),
+            onChanged: !protocol.isAvailableOnThisPlatform
+                ? null
+                : (v) => ref
+                    .read(settingsProvider.notifier)
+                    .setProtocolEnabled(protocol, v),
+          ),
         const Divider(height: 24),
       ],
     );

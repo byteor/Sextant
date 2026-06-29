@@ -4,11 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sextant/model/device.dart';
 import 'package:sextant/model/discovery_source.dart';
 import 'package:sextant/model/network_info.dart';
+import 'package:sextant/platform/arp_table.dart';
+import 'package:sextant/platform/icmp_pinger.dart';
 import 'package:sextant/platform/netbios.dart';
 import 'package:sextant/scan/ipv4_subnet.dart';
 import 'package:sextant/scan/mdns_discovery.dart';
 import 'package:sextant/scan/scan_orchestrator.dart';
 import 'package:sextant/scan/ssdp_discovery.dart';
+import 'package:sextant/scan/tcp_host_scanner.dart';
 
 /// mDNS/NetBIOS do real network IO; keep this end-to-end test hermetic.
 class _SilentMdns extends MdnsDiscovery {
@@ -34,6 +37,78 @@ class _SilentSsdp extends SsdpDiscovery {
   }) =>
       const Stream.empty();
 }
+
+class _TrackingIcmpSweeper extends IcmpSweeper {
+  bool called = false;
+  @override
+  Stream<PingResult> sweep(
+    List<InternetAddress> hosts, {
+    PingProgress? onProgress,
+  }) {
+    called = true;
+    return const Stream.empty();
+  }
+}
+
+class _TrackingArpResolver extends ArpResolver {
+  bool called = false;
+  @override
+  Future<Map<String, String>> lookup() async {
+    called = true;
+    return const {};
+  }
+}
+
+class _TrackingTcpHostScanner extends TcpHostScanner {
+  bool called = false;
+  @override
+  Stream<HostScanResult> scan(
+    List<InternetAddress> hosts,
+    List<int> ports, {
+    HostProgress? onHostComplete,
+  }) {
+    called = true;
+    return const Stream.empty();
+  }
+}
+
+class _TrackingMdns extends MdnsDiscovery {
+  bool called = false;
+  @override
+  Stream<MdnsObservation> discover({
+    Duration timeout = const Duration(seconds: 4),
+  }) {
+    called = true;
+    return const Stream.empty();
+  }
+}
+
+class _TrackingNetbios extends NetbiosResolver {
+  bool called = false;
+  @override
+  Future<String?> queryName(InternetAddress host) async {
+    called = true;
+    return null;
+  }
+}
+
+class _TrackingSsdp extends SsdpDiscovery {
+  bool called = false;
+  @override
+  Stream<SsdpObservation> discover({
+    Duration timeout = const Duration(seconds: 3),
+  }) {
+    called = true;
+    return const Stream.empty();
+  }
+}
+
+ScanNetwork _loopbackNetwork() => ScanNetwork(
+      interfaceName: 'lo',
+      displayName: 'Loopback',
+      address: InternetAddress.loopbackIPv4,
+      subnet: Ipv4Subnet.fromCidr('127.0.0.1/32'),
+    );
 
 void main() {
   test('ScanOrchestrator discovers a live loopback host end-to-end', () async {
@@ -76,5 +151,97 @@ void main() {
     expect(device.discoveredBy, contains(DiscoverySource.tcp));
     expect(device.discoveredBy, contains(DiscoverySource.icmp));
     expect(device.networkId, network.id);
+  });
+
+  test('icmpEnabled: false never calls IcmpSweeper.sweep()', () async {
+    final tracker = _TrackingIcmpSweeper();
+    final orchestrator = ScanOrchestrator(
+      icmpSweeper: tracker,
+      mdns: const _SilentMdns(),
+      netbios: const _SilentNetbios(),
+      ssdp: const _SilentSsdp(),
+      icmpEnabled: false,
+    );
+
+    await orchestrator.scan(_loopbackNetwork()).toList();
+
+    expect(tracker.called, isFalse);
+  });
+
+  test('arpEnabled: false never calls ArpResolver.lookup()', () async {
+    final tracker = _TrackingArpResolver();
+    final orchestrator = ScanOrchestrator(
+      arpResolver: tracker,
+      mdns: const _SilentMdns(),
+      netbios: const _SilentNetbios(),
+      ssdp: const _SilentSsdp(),
+      arpEnabled: false,
+    );
+
+    await orchestrator.scan(_loopbackNetwork()).toList();
+
+    expect(tracker.called, isFalse);
+  });
+
+  test('tcpEnabled: false never calls TcpHostScanner.scan()', () async {
+    final tracker = _TrackingTcpHostScanner();
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close());
+    final orchestrator = ScanOrchestrator(
+      scanner: tracker,
+      ports: [server.port],
+      mdns: const _SilentMdns(),
+      netbios: const _SilentNetbios(),
+      ssdp: const _SilentSsdp(),
+      tcpEnabled: false,
+    );
+
+    final found = await orchestrator.scan(_loopbackNetwork()).toList();
+
+    expect(tracker.called, isFalse);
+    expect(found.any((d) => d.openPorts.isNotEmpty), isFalse);
+  });
+
+  test('mdnsEnabled: false never calls MdnsDiscovery.discover()', () async {
+    final tracker = _TrackingMdns();
+    final orchestrator = ScanOrchestrator(
+      mdns: tracker,
+      netbios: const _SilentNetbios(),
+      ssdp: const _SilentSsdp(),
+      mdnsEnabled: false,
+    );
+
+    await orchestrator.scan(_loopbackNetwork()).toList();
+
+    expect(tracker.called, isFalse);
+  });
+
+  test('netbiosEnabled: false never calls NetbiosResolver.queryName()',
+      () async {
+    final tracker = _TrackingNetbios();
+    final orchestrator = ScanOrchestrator(
+      mdns: const _SilentMdns(),
+      netbios: tracker,
+      ssdp: const _SilentSsdp(),
+      netbiosEnabled: false,
+    );
+
+    await orchestrator.scan(_loopbackNetwork()).toList();
+
+    expect(tracker.called, isFalse);
+  });
+
+  test('ssdpEnabled: false never calls SsdpDiscovery.discover()', () async {
+    final tracker = _TrackingSsdp();
+    final orchestrator = ScanOrchestrator(
+      mdns: const _SilentMdns(),
+      netbios: const _SilentNetbios(),
+      ssdp: tracker,
+      ssdpEnabled: false,
+    );
+
+    await orchestrator.scan(_loopbackNetwork()).toList();
+
+    expect(tracker.called, isFalse);
   });
 }

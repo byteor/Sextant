@@ -70,6 +70,12 @@ class ScanOrchestrator {
     SsdpDiscovery? ssdp,
     HostnameResolver? resolveHostname,
     List<int>? ports,
+    this.icmpEnabled = true,
+    this.arpEnabled = true,
+    this.tcpEnabled = true,
+    this.mdnsEnabled = true,
+    this.netbiosEnabled = true,
+    this.ssdpEnabled = true,
   })  : _scanner = scanner ?? TcpHostScanner(),
         _icmp = icmpSweeper ?? IcmpSweeper(),
         _arp = arpResolver ?? const ArpResolver(),
@@ -89,6 +95,16 @@ class ScanOrchestrator {
   final SsdpDiscovery _ssdp;
   final HostnameResolver _resolveHostname;
   final List<int> _ports;
+
+  /// Per-protocol enable flags, configured from Settings. A disabled protocol's
+  /// scan phase is skipped entirely in [_run] (not merely hidden in the UI).
+  /// All default true, preserving prior behavior for callers that don't set them.
+  final bool icmpEnabled;
+  final bool arpEnabled;
+  final bool tcpEnabled;
+  final bool mdnsEnabled;
+  final bool netbiosEnabled;
+  final bool ssdpEnabled;
 
   Stream<Device> scan(
     ScanNetwork network, {
@@ -112,8 +128,8 @@ class ScanOrchestrator {
     // mDNS/Bonjour and SSDP/UPnP run in parallel with the sweeps: many devices
     // announce a friendly name (and service/type) over these even with no
     // reverse-DNS record.
-    pendingNames.add(_runMdns(controller, network, now));
-    pendingNames.add(_runSsdp(controller, network, now));
+    if (mdnsEnabled) pendingNames.add(_runMdns(controller, network, now));
+    if (ssdpEnabled) pendingNames.add(_runSsdp(controller, network, now));
 
     Device base(
       String ip,
@@ -133,53 +149,64 @@ class ScanOrchestrator {
 
     // Phase 1: ping sweep — emit each responder the instant it answers, and
     // kick off reverse DNS in the background.
-    await for (final result in _icmp.sweep(
-      hosts,
-      onProgress: onHostComplete == null
-          ? null
-          : (done, total) => onHostComplete(done, total),
-    )) {
-      final addr = result.address;
-      final ip = addr.address;
-      live[ip] = addr;
-      controller.add(
-        base(ip, {DiscoverySource.icmp}, latencyMs: result.rttMs),
-      );
-      pendingNames.add(_emitHostname(controller, addr, network, now));
+    if (icmpEnabled) {
+      await for (final result in _icmp.sweep(
+        hosts,
+        onProgress: onHostComplete == null
+            ? null
+            : (done, total) => onHostComplete(done, total),
+      )) {
+        final addr = result.address;
+        final ip = addr.address;
+        live[ip] = addr;
+        controller.add(
+          base(ip, {DiscoverySource.icmp}, latencyMs: result.rttMs),
+        );
+        pendingNames.add(_emitHostname(controller, addr, network, now));
+      }
     }
 
     // Phase 2: every L2-present host is now in the ARP cache. Emit MAC + ARP
     // source; hosts that didn't answer ping appear here for the first time.
-    final arp = await _arp.lookup();
-    for (final entry in arp.entries) {
-      if (!isScannableArpEntry(entry.key, entry.value, network.subnet)) continue;
-      final isNew = !live.containsKey(entry.key);
-      final addr = InternetAddress(entry.key);
-      live[entry.key] = addr;
-      controller.add(base(entry.key, {DiscoverySource.arp}, mac: entry.value));
-      if (isNew) {
-        pendingNames.add(_emitHostname(controller, addr, network, now));
+    if (arpEnabled) {
+      final arp = await _arp.lookup();
+      for (final entry in arp.entries) {
+        if (!isScannableArpEntry(entry.key, entry.value, network.subnet)) {
+          continue;
+        }
+        final isNew = !live.containsKey(entry.key);
+        final addr = InternetAddress(entry.key);
+        live[entry.key] = addr;
+        controller.add(base(entry.key, {DiscoverySource.arp}, mac: entry.value));
+        if (isNew) {
+          pendingNames.add(_emitHostname(controller, addr, network, now));
+        }
       }
     }
 
     // NetBIOS name lookups for the live hosts (gets Windows/SMB machine names),
     // in parallel with the port scan.
-    pendingNames.add(_runNetbios(controller, live.values.toList(), network, now));
+    if (netbiosEnabled) {
+      pendingNames
+          .add(_runNetbios(controller, live.values.toList(), network, now));
+    }
 
     // Phase 3: port-scan the live hosts; emit ports as each host completes,
     // then grab banners on identifiable ports to name the running services.
-    await for (final result in _scanner.scan(live.values.toList(), _ports)) {
-      controller.add(
-        Device(
-          ip: result.host.address,
-          openPorts: result.openPorts,
-          discoveredBy: {DiscoverySource.tcp},
-          firstSeen: now,
-          lastSeen: now,
-          networkId: network.id,
-        ),
-      );
-      pendingNames.add(_emitServices(controller, result, network, now));
+    if (tcpEnabled) {
+      await for (final result in _scanner.scan(live.values.toList(), _ports)) {
+        controller.add(
+          Device(
+            ip: result.host.address,
+            openPorts: result.openPorts,
+            discoveredBy: {DiscoverySource.tcp},
+            firstSeen: now,
+            lastSeen: now,
+            networkId: network.id,
+          ),
+        );
+        pendingNames.add(_emitServices(controller, result, network, now));
+      }
     }
 
     await Future.wait(pendingNames);

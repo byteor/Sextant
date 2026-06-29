@@ -24,11 +24,13 @@ import '../enrich/oui_vendor_lookup.dart';
 import '../model/device.dart';
 import '../model/discovery_source.dart';
 import '../model/network_info.dart';
+import '../model/scan_protocol.dart';
 import '../platform/network_discovery.dart';
 import '../platform/network_monitor.dart';
 import '../scan/scan_orchestrator.dart';
 import '../version.dart';
 import 'column_widths.dart';
+import 'settings.dart';
 import 'scan_state.dart';
 
 /// Loads (and caches) the persisted device-name store.
@@ -181,13 +183,28 @@ class ScanController extends Notifier<ScanState> {
   OuiVendorLookup _oui = const OuiVendorLookup({});
 
   /// Live-monitoring state: when [_monitoring] is on, the network is re-scanned
-  /// every [_monitorInterval] and each pass is diffed against the previous to
-  /// surface newly-appeared devices.
+  /// every configured refresh interval (see [_scheduleNextTick]) and each pass
+  /// is diffed against the previous to surface newly-appeared devices.
   bool _monitoring = false;
   ScanNetwork? _monitorNetwork;
   Timer? _monitorTimer;
   StreamSubscription<Device>? _monitorSub;
-  static const _monitorInterval = Duration(seconds: 30);
+
+  /// Builds a [ScanOrchestrator] with each scan phase enabled per the user's
+  /// current settings, falling back to all-enabled (prior behavior) until
+  /// settings have loaded.
+  ScanOrchestrator _buildOrchestrator() {
+    final enabled = ref.read(settingsProvider).value?.enabledProtocols ??
+        ScanProtocol.values.toSet();
+    return ScanOrchestrator(
+      icmpEnabled: enabled.contains(ScanProtocol.icmp),
+      arpEnabled: enabled.contains(ScanProtocol.arp),
+      tcpEnabled: enabled.contains(ScanProtocol.tcp),
+      mdnsEnabled: enabled.contains(ScanProtocol.mdns),
+      netbiosEnabled: enabled.contains(ScanProtocol.netbios),
+      ssdpEnabled: enabled.contains(ScanProtocol.ssdp),
+    );
+  }
 
   @override
   ScanState build() {
@@ -218,7 +235,7 @@ class ScanController extends Notifier<ScanState> {
       isMonitoring: _monitoring,
     );
 
-    final orchestrator = ScanOrchestrator();
+    final orchestrator = _buildOrchestrator();
     final completer = Completer<void>();
     _sub = orchestrator
         .scan(
@@ -254,7 +271,7 @@ class ScanController extends Notifier<ScanState> {
 
   /// Turns live monitoring on or off. On enable, if the list is empty it runs a
   /// visible baseline scan to populate it; thereafter it re-scans every
-  /// [_monitorInterval]. Each periodic re-scan runs *entirely in the background*
+  /// configured refresh interval. Each periodic re-scan runs *entirely in the background*
   /// (the on-screen list is untouched while it runs) and only when it completes
   /// is the result reconciled into the list: new devices added, missing ones
   /// greyed out (kept, not deleted), changed ones updated — and newly-appeared
@@ -285,7 +302,9 @@ class ScanController extends Notifier<ScanState> {
 
   void _scheduleNextTick() {
     _monitorTimer?.cancel();
-    _monitorTimer = Timer(_monitorInterval, _monitorTick);
+    final seconds =
+        ref.read(settingsProvider).value?.monitorIntervalSeconds ?? 30;
+    _monitorTimer = Timer(Duration(seconds: seconds), _monitorTick);
   }
 
   Future<void> _monitorTick() async {
@@ -307,7 +326,7 @@ class ScanController extends Notifier<ScanState> {
     final store = await ref.read(renameStoreProvider.future);
     final typeStore = await ref.read(typeOverrideStoreProvider.future);
     final byIp = <String, Device>{};
-    final orchestrator = ScanOrchestrator();
+    final orchestrator = _buildOrchestrator();
     final completer = Completer<void>();
     _monitorSub = orchestrator.scan(network).listen(
       (observation) {
