@@ -26,8 +26,12 @@ jobs:
 
       - name: Build
         run: |
+          MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
+          MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
+          BUILD_NAME="$MAJOR.$MINOR"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build macos --release \
+            --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUM" \
             --dart-define="BUILD_NUMBER=$BUILD_NUM"
 
@@ -64,8 +68,12 @@ jobs:
 
       - name: Build
         run: |
+          MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
+          MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
+          BUILD_NAME="$MAJOR.$MINOR"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build linux --release \
+            --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUM" \
             --dart-define="BUILD_NUMBER=$BUILD_NUM"
 
@@ -103,8 +111,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          $BuildNum = git rev-list --count HEAD
+          $Major    = (Select-String 'kAppVersionMajor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+          $Minor    = (Select-String 'kAppVersionMinor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+          $BuildName = "$Major.$Minor"
+          $BuildNum  = git rev-list --count HEAD
           flutter build windows --release `
+            --build-name="$BuildName" `
             --build-number="$BuildNum" `
             --dart-define="BUILD_NUMBER=$BuildNum"
 

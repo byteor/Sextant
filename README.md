@@ -110,29 +110,29 @@ flutter run -d windows  # Windows
 
 ### Build release binaries
 
-Pass `--build-name` and `--build-number` so the bundle version metadata matches the displayed version:
+Pass `--build-name` and `--build-number` so the bundle version metadata (`CFBundleShortVersionString` on macOS, etc.) matches what the app displays. The version is read from [lib/version.dart](lib/version.dart) — the single source of truth — so a version bump there propagates everywhere automatically.
 
+**macOS / Linux (bash):**
 ```bash
-# Compute the build number (total git commit count)
+BUILD_NAME=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+').$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
 BUILD_NUM=$(git rev-list --count HEAD)
 
-# macOS — produces sextant.app
 flutter build macos --release \
-  --build-name=1.17 \
-  --build-number=$BUILD_NUM \
-  --dart-define=BUILD_NUMBER=$BUILD_NUM
+  --build-name=$BUILD_NAME --build-number=$BUILD_NUM --dart-define=BUILD_NUMBER=$BUILD_NUM
 
-# Linux — produces a self-contained bundle directory
 flutter build linux --release \
-  --build-name=1.17 \
-  --build-number=$BUILD_NUM \
-  --dart-define=BUILD_NUMBER=$BUILD_NUM
+  --build-name=$BUILD_NAME --build-number=$BUILD_NUM --dart-define=BUILD_NUMBER=$BUILD_NUM
+```
 
-# Windows — produces an MSIX-ready directory
-flutter build windows --release \
-  --build-name=1.17 \
-  --build-number=$BUILD_NUM \
-  --dart-define=BUILD_NUMBER=$BUILD_NUM
+**Windows (PowerShell):**
+```powershell
+$Major    = (Select-String 'kAppVersionMajor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+$Minor    = (Select-String 'kAppVersionMinor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+$BuildName = "$Major.$Minor"
+$BuildNum  = git rev-list --count HEAD
+
+flutter build windows --release `
+  --build-name=$BuildName --build-number=$BuildNum --dart-define=BUILD_NUMBER=$BuildNum
 ```
 
 ---
