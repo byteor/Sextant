@@ -110,15 +110,29 @@ flutter run -d windows  # Windows
 
 ### Build release binaries
 
+Pass `--build-name` and `--build-number` so the bundle version metadata matches the displayed version:
+
 ```bash
+# Compute the build number (total git commit count)
+BUILD_NUM=$(git rev-list --count HEAD)
+
 # macOS — produces sextant.app
-flutter build macos --release
+flutter build macos --release \
+  --build-name=1.17 \
+  --build-number=$BUILD_NUM \
+  --dart-define=BUILD_NUMBER=$BUILD_NUM
 
 # Linux — produces a self-contained bundle directory
-flutter build linux --release
+flutter build linux --release \
+  --build-name=1.17 \
+  --build-number=$BUILD_NUM \
+  --dart-define=BUILD_NUMBER=$BUILD_NUM
 
 # Windows — produces an MSIX-ready directory
-flutter build windows --release
+flutter build windows --release \
+  --build-name=1.17 \
+  --build-number=$BUILD_NUM \
+  --dart-define=BUILD_NUMBER=$BUILD_NUM
 ```
 
 ---
