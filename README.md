@@ -127,29 +127,23 @@ flutter build windows --release
 
 ### macOS — DMG
 
-The release build produces `build/macos/Build/Products/Release/sextant.app`. Package it as a distributable disk image using [`create-dmg`](https://github.com/create-dmg/create-dmg):
+The release build produces `build/macos/Build/Products/Release/sextant.app`. Use [`create-dmg`](https://github.com/create-dmg/create-dmg) to produce a traditional drag-to-Applications installer — it places the app icon and an Applications folder alias side by side in a clean window:
 
 ```bash
 brew install create-dmg
+
 create-dmg \
   --volname "Sextant" \
   --window-pos 200 120 \
-  --window-size 660 400 \
+  --window-size 540 380 \
   --icon-size 128 \
-  --app-drop-link 440 170 \
+  --icon "sextant.app" 140 190 \
+  --app-drop-link 400 190 \
   "Sextant.dmg" \
   "build/macos/Build/Products/Release/sextant.app"
 ```
 
-Or create a plain DMG with the built-in `hdiutil`:
-
-```bash
-hdiutil create \
-  -volname "Sextant" \
-  -srcfolder "build/macos/Build/Products/Release/sextant.app" \
-  -ov -format UDZO \
-  Sextant.dmg
-```
+> **Important:** the last argument must point to the `.app` bundle itself, not its parent directory.
 
 For distribution outside your own machine, sign and notarize the app with your Apple Developer certificate before packaging.
 
