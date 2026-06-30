@@ -69,19 +69,28 @@ class ScanScreen extends ConsumerWidget {
           children: [
             const Icon(Icons.explore_outlined),
             const SizedBox(width: 8),
-            const Text('Sextant'),
-            const SizedBox(width: 8),
-            Consumer(
-              builder: (context, ref, _) {
-                final version = ref.watch(appVersionProvider);
-                return version.maybeWhen(
-                  data: (v) => Text(
-                    v,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  orElse: () => const SizedBox.shrink(),
-                );
-              },
+            // Baseline-aligned so "Sextant" and the version number sit on
+            // the same line of text, rather than being centered against
+            // each other's (different-height) bounding boxes.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                const Text('Sextant'),
+                const SizedBox(width: 8),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final version = ref.watch(appVersionProvider);
+                    return version.maybeWhen(
+                      data: (v) => Text(
+                        v,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      orElse: () => const SizedBox.shrink(),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(width: 24),
             Expanded(
