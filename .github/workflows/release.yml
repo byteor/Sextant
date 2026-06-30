@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ── macOS ──────────────────────────────────────────────────────────────────
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # required for git rev-list --count
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build
+        run: |
+          BUILD_NUM=$(git rev-list --count HEAD)
+          flutter build macos --release \
+            --build-number="$BUILD_NUM" \
+            --dart-define="BUILD_NUMBER=$BUILD_NUM"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sextant-macos
+          path: build/macos/Build/Products/Release/sextant.app
+          if-no-files-found: error
+
+  # ── Linux ──────────────────────────────────────────────────────────────────
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: stable
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y ninja-build libgtk-3-dev
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build
+        run: |
+          BUILD_NUM=$(git rev-list --count HEAD)
+          flutter build linux --release \
+            --build-number="$BUILD_NUM" \
+            --dart-define="BUILD_NUMBER=$BUILD_NUM"
+
+      - name: Package tar.gz
+        run: |
+          tar -czf sextant-linux-x64.tar.gz \
+            -C build/linux/x64/release/ bundle
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sextant-linux
+          path: sextant-linux-x64.tar.gz
+          if-no-files-found: error
+
+  # ── Windows ────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $BuildNum = git rev-list --count HEAD
+          flutter build windows --release `
+            --build-number="$BuildNum" `
+            --dart-define="BUILD_NUMBER=$BuildNum"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sextant-windows
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error

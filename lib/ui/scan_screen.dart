@@ -16,6 +16,7 @@ import '../scan/well_known_ports.dart';
 import '../state/column_widths.dart';
 import '../state/network_selection.dart';
 import '../state/providers.dart';
+import '../version.dart';
 import 'about_dialog.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
@@ -67,7 +68,13 @@ class ScanScreen extends ConsumerWidget {
         titleSpacing: 16,
         title: Row(
           children: [
-            const Icon(Icons.explore_outlined),
+            Image.asset(
+              'assets/icon/sextant_mark.png',
+              width: 24,
+              height: 24,
+              color: IconTheme.of(context).color,
+              colorBlendMode: BlendMode.srcIn,
+            ),
             const SizedBox(width: 8),
             // Baseline-aligned so "Sextant" and the version number sit on
             // the same line of text, rather than being centered against
@@ -78,17 +85,9 @@ class ScanScreen extends ConsumerWidget {
               children: [
                 const Text('Sextant'),
                 const SizedBox(width: 8),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final version = ref.watch(appVersionProvider);
-                    return version.maybeWhen(
-                      data: (v) => Text(
-                        v,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      orElse: () => const SizedBox.shrink(),
-                    );
-                  },
+                Text(
+                  kToolbarVersion,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
@@ -257,12 +256,7 @@ class _Toolbar extends ConsumerWidget {
         IconButton(
           tooltip: 'About',
           icon: const Icon(Icons.info_outline),
-          onPressed: () => ref
-              .read(appVersionProvider)
-              .maybeWhen(
-                data: (v) => showSextantAboutDialog(context, v),
-                orElse: () {},
-              ),
+          onPressed: () => showSextantAboutDialog(context),
         ),
         IconButton(
           tooltip: 'Settings',

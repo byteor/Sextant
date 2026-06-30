@@ -73,6 +73,9 @@ flutter:
 
   assets:
     - assets/oui.tsv
+    - assets/icon/sextant_mark.png
+    - assets/about/about_icon.png
+    - assets/about/about_text.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

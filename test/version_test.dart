@@ -2,11 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sextant/version.dart';
 
 void main() {
-  test('formatVersion joins major, minor, and build with dots', () {
-    expect(formatVersion(47), '1.0.47');
+  test('kToolbarVersion is major.minor', () {
+    expect(kToolbarVersion, '$kAppVersionMajor.$kAppVersionMinor');
   });
 
-  test('formatVersion uses kAppVersionMajor/kAppVersionMinor', () {
-    expect(formatVersion(0), '$kAppVersionMajor.$kAppVersionMinor.0');
+  test('kAboutVersion starts with Version major.minor build', () {
+    expect(
+      kAboutVersion,
+      startsWith('Version $kAppVersionMajor.$kAppVersionMinor build '),
+    );
+  });
+
+  test('kBuildNumber defaults to dev in test runs (no --dart-define set)', () {
+    expect(kBuildNumber, 'dev');
   });
 }

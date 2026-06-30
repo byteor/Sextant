@@ -55,11 +55,6 @@ Future<void> _pump(
       () => _FixedScanController(state ?? ScanState(devices: devices)),
     ),
     networksProvider.overrideWith((ref) async => []),
-    // appVersionProvider normally reads the app-support directory via
-    // path_provider, whose platform channel isn't mocked under plain
-    // flutter_test — overridden here so the toolbar's version text has
-    // something deterministic to render.
-    appVersionProvider.overrideWith((ref) async => '1.0.1'),
     // settingsProvider also reads the app-support directory via
     // path_provider — overridden so opening the Settings screen
     // (pushed on top of this widget tree) resolves deterministically.
@@ -199,10 +194,9 @@ void main() {
   testWidgets('the toolbar shows the version and an About button',
       (tester) async {
     await _pump(tester, []);
-    await tester.pump(const Duration(milliseconds: 50)); // let appVersionProvider resolve
 
     expect(find.byTooltip('About'), findsOneWidget);
-    expect(find.textContaining('1.0.'), findsOneWidget);
+    expect(find.textContaining('1.'), findsOneWidget);
   });
 
   testWidgets('the toolbar has a Settings button that opens SettingsScreen',

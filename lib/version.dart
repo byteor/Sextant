@@ -1,9 +1,15 @@
-/// The app's manually-bumped major/minor version. The third component of the
-/// displayed version ("the build number") auto-increments on every app
-/// launch — see [BuildCounterStore].
+// Major and minor are bumped manually at release time.
 const kAppVersionMajor = 1;
-const kAppVersionMinor = 0;
+const kAppVersionMinor = 17;
 
-/// Formats the full displayed version as `major.minor.build`, e.g. `1.0.47`.
-String formatVersion(int build) =>
-    '$kAppVersionMajor.$kAppVersionMinor.$build';
+// Build number baked in at compile time via --dart-define=BUILD_NUMBER=N.
+// CI sets this to the total git commit count (git rev-list --count HEAD),
+// which is monotonically increasing and the same across CI providers.
+// Local debug runs show 'dev'.
+const kBuildNumber = String.fromEnvironment('BUILD_NUMBER', defaultValue: 'dev');
+
+// "1.17" — shown in the toolbar.
+String get kToolbarVersion => '$kAppVersionMajor.$kAppVersionMinor';
+
+// "Version 1.17 build 42" — shown in the About dialog.
+String get kAboutVersion => 'Version $kAppVersionMajor.$kAppVersionMinor build $kBuildNumber';
