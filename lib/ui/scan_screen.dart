@@ -70,6 +70,19 @@ class ScanScreen extends ConsumerWidget {
             const Icon(Icons.explore_outlined),
             const SizedBox(width: 8),
             const Text('Sextant'),
+            const SizedBox(width: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                final version = ref.watch(appVersionProvider);
+                return version.maybeWhen(
+                  data: (v) => Text(
+                    v,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  orElse: () => const SizedBox.shrink(),
+                );
+              },
+            ),
             const SizedBox(width: 24),
             Expanded(
               child: networksAsync.when(
@@ -232,30 +245,6 @@ class _Toolbar extends ConsumerWidget {
           ),
         ),
         const Spacer(),
-        Consumer(
-          builder: (context, ref, _) {
-            final version = ref.watch(appVersionProvider);
-            return version.maybeWhen(
-              // No Flexible here: the Spacer above must be the Row's only flex
-              // child so it absorbs all free space and pushes the version /
-              // About / Settings group flush to the right edge. Wrapping the
-              // version in Flexible made it compete with the Spacer for flex
-              // space, leaving the group floating mid-toolbar with a gap to its
-              // right. The version string is short and fixed-format, so it
-              // needs no shrink-to-fit.
-              data: (v) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  v,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              orElse: () => const SizedBox.shrink(),
-            );
-          },
-        ),
         IconButton(
           tooltip: 'About',
           icon: const Icon(Icons.info_outline),
@@ -552,8 +541,6 @@ class DeviceRow extends ConsumerWidget {
                     ? FontStyle.italic
                     : FontStyle.normal,
                 color: offline ? muted : null,
-                decoration: offline ? TextDecoration.lineThrough : null,
-                decorationColor: muted,
               ),
             ),
           ),
