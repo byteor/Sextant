@@ -161,6 +161,8 @@ create-dmg \
 
 For distribution outside your own machine, sign and notarize the app with your Apple Developer certificate before packaging.
 
+> **Troubleshooting:** if the installed app doesn't appear in Spotlight, or the DMG looks wrong, see [docs/macos-distribution.md](docs/macos-distribution.md) for a full diagnosis guide covering signing setup, `CFBundleDisplayName`, `LSApplicationCategoryType`, the expired WWDR intermediate CA, and rebuilding the Spotlight index.
+
 ### Linux — tar.gz / AppImage / deb
 
 The release build produces a self-contained bundle at `build/linux/x64/release/bundle/`. It can be distributed as:
