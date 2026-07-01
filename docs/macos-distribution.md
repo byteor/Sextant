@@ -200,6 +200,39 @@ sudo xcode-select -s /Applications/Xcode.app   # switch to stable Xcode
 
 ---
 
+## CI Signing Setup (GitHub Actions)
+
+The release workflow needs three repository secrets so it can import the certificate into a temporary keychain on the runner.
+
+### Export the certificate
+
+1. Open **Keychain Access** on your Mac
+2. Find **Apple Development: your@email.com (XXXXXXXXXX)** under **My Certificates**
+3. Right-click → **Export** → save as `certificate.p12`, set a strong export password
+4. Base64-encode the file:
+
+```bash
+base64 -i certificate.p12 | pbcopy   # copies to clipboard
+```
+
+### Add secrets to the GitHub repository
+
+Go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+
+| Secret name | Value |
+|---|---|
+| `MACOS_CERTIFICATE` | Base64-encoded `.p12` (from the step above) |
+| `MACOS_CERTIFICATE_PWD` | The export password you set on the `.p12` |
+| `MACOS_KEYCHAIN_PWD` | Any random string — used only for the temporary CI keychain |
+
+The workflow creates a fresh keychain on each run, imports the certificate and the Apple WWDR G3 intermediate CA, builds and signs the app, packages it as a DMG, then deletes the keychain (`if: always()` ensures cleanup even on failure).
+
+### Limitation: Apple Development vs Developer ID
+
+An **Apple Development** certificate (free personal team) produces apps that are trusted on Macs signed into the same Apple ID. For public distribution — where Gatekeeper must accept the app on any Mac without prompting — you need a **Developer ID Application** certificate, which requires the paid Apple Developer Program ($99/year) and notarization of the built binary.
+
+---
+
 ## Summary of Root Causes Found
 
 | Symptom | Root cause | Fix |
