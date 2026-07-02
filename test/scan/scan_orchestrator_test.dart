@@ -44,6 +44,7 @@ class _TrackingIcmpSweeper extends IcmpSweeper {
   Stream<PingResult> sweep(
     List<InternetAddress> hosts, {
     PingProgress? onProgress,
+    bool Function()? isCancelled,
   }) {
     called = true;
     return const Stream.empty();
@@ -66,6 +67,7 @@ class _TrackingTcpHostScanner extends TcpHostScanner {
     List<InternetAddress> hosts,
     List<int> ports, {
     HostProgress? onHostComplete,
+    bool Function()? isCancelled,
   }) {
     called = true;
     return const Stream.empty();
