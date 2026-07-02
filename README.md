@@ -1,9 +1,4 @@
-<table border="0" cellspacing="0" cellpadding="0">
-<tr>
-<td><img src="assets/about/about_icon.png" width="72" alt="Sextant icon"></td>
-<td><h1>Sextant</h1></td>
-</tr>
-</table>
+<h1><img src="assets/about/about_icon.png" width="128" alt="" valign="middle"> Sextant</h1>
 
 A lightweight LAN scanner for discovering and monitoring devices on your local network. Built with Flutter for macOS, Linux, and Windows.
 
