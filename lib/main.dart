@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'state/providers.dart';
 import 'state/settings.dart';
 import 'ui/scan_screen.dart';
 
@@ -26,6 +27,8 @@ Future<void> main() async {
       await windowManager.show();
       await windowManager.focus();
     }));
+    // Intercept close so we can stop any in-flight scan before exiting.
+    await windowManager.setPreventClose(true);
   }
 
   runApp(const ProviderScope(child: SextantApp()));
@@ -63,7 +66,47 @@ class SextantApp extends ConsumerWidget {
         ),
         visualDensity: VisualDensity.compact,
       ),
-      home: const ScanScreen(),
+      home: const _WindowCloseGuard(child: ScanScreen()),
     );
   }
+}
+
+/// Intercepts the window-close event on desktop, stops any in-flight scan,
+/// then lets the window actually close. Without this, pending ICMP/TCP workers
+/// keep the Dart event loop alive and the app appears frozen after close.
+class _WindowCloseGuard extends ConsumerStatefulWidget {
+  const _WindowCloseGuard({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_WindowCloseGuard> createState() => _WindowCloseGuardState();
+}
+
+class _WindowCloseGuardState extends ConsumerState<_WindowCloseGuard>
+    with WindowListener {
+  @override
+  void initState() {
+    super.initState();
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      windowManager.addListener(this);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      windowManager.removeListener(this);
+    }
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    await ref.read(scanControllerProvider.notifier).stopScan();
+    await windowManager.destroy();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

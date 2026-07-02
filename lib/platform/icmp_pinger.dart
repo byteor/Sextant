@@ -105,9 +105,10 @@ class IcmpSweeper {
   Stream<PingResult> sweep(
     List<InternetAddress> hosts, {
     PingProgress? onProgress,
+    bool Function()? isCancelled,
   }) {
     final controller = StreamController<PingResult>();
-    unawaited(_drive(hosts, controller, onProgress));
+    unawaited(_drive(hosts, controller, onProgress, isCancelled));
     return controller.stream;
   }
 
@@ -115,6 +116,7 @@ class IcmpSweeper {
     List<InternetAddress> hosts,
     StreamController<PingResult> controller,
     PingProgress? onProgress,
+    bool Function()? isCancelled,
   ) async {
     if (hosts.isEmpty) {
       await controller.close();
@@ -124,9 +126,11 @@ class IcmpSweeper {
     var done = 0;
     Future<void> worker() async {
       while (true) {
+        if (isCancelled?.call() ?? false) break;
         final i = next++;
         if (i >= hosts.length) break;
         final result = await _pinger.ping(hosts[i]);
+        if (isCancelled?.call() ?? false) break;
         if (result.alive) controller.add(result);
         onProgress?.call(++done, hosts.length);
       }

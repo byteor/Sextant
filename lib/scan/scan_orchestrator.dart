@@ -59,6 +59,10 @@ Future<String?> _reverseDns(InternetAddress address) async {
 /// hostname and MAC), then again per host with its open ports; the scan
 /// controller merges observations by IP. Discovery progress (the dominant
 /// phase) is reported via [onHostComplete] so the UI can show "scanned X of Y".
+///
+/// Call [cancel] to signal all in-progress work to stop as soon as possible.
+/// Workers stop picking up new tasks immediately; already-in-flight network
+/// operations (pings, TCP connects) finish within their natural timeouts (≤2s).
 class ScanOrchestrator {
   ScanOrchestrator({
     TcpHostScanner? scanner,
@@ -106,10 +110,16 @@ class ScanOrchestrator {
   final bool netbiosEnabled;
   final bool ssdpEnabled;
 
+  bool _cancelled = false;
+
+  /// Signals all in-progress work to stop as soon as possible.
+  void cancel() => _cancelled = true;
+
   Stream<Device> scan(
     ScanNetwork network, {
     HostProgress? onHostComplete,
   }) {
+    _cancelled = false;
     final controller = StreamController<Device>();
     unawaited(_run(network, controller, onHostComplete));
     return controller.stream;
@@ -149,13 +159,15 @@ class ScanOrchestrator {
 
     // Phase 1: ping sweep — emit each responder the instant it answers, and
     // kick off reverse DNS in the background.
-    if (icmpEnabled) {
+    if (icmpEnabled && !_cancelled) {
       await for (final result in _icmp.sweep(
         hosts,
         onProgress: onHostComplete == null
             ? null
             : (done, total) => onHostComplete(done, total),
+        isCancelled: () => _cancelled,
       )) {
+        if (_cancelled) break;
         final addr = result.address;
         final ip = addr.address;
         live[ip] = addr;
@@ -168,9 +180,10 @@ class ScanOrchestrator {
 
     // Phase 2: every L2-present host is now in the ARP cache. Emit MAC + ARP
     // source; hosts that didn't answer ping appear here for the first time.
-    if (arpEnabled) {
+    if (arpEnabled && !_cancelled) {
       final arp = await _arp.lookup();
       for (final entry in arp.entries) {
+        if (_cancelled) break;
         if (!isScannableArpEntry(entry.key, entry.value, network.subnet)) {
           continue;
         }
@@ -186,15 +199,20 @@ class ScanOrchestrator {
 
     // NetBIOS name lookups for the live hosts (gets Windows/SMB machine names),
     // in parallel with the port scan.
-    if (netbiosEnabled) {
+    if (netbiosEnabled && !_cancelled) {
       pendingNames
           .add(_runNetbios(controller, live.values.toList(), network, now));
     }
 
     // Phase 3: port-scan the live hosts; emit ports as each host completes,
     // then grab banners on identifiable ports to name the running services.
-    if (tcpEnabled) {
-      await for (final result in _scanner.scan(live.values.toList(), _ports)) {
+    if (tcpEnabled && !_cancelled) {
+      await for (final result in _scanner.scan(
+        live.values.toList(),
+        _ports,
+        isCancelled: () => _cancelled,
+      )) {
+        if (_cancelled) break;
         controller.add(
           Device(
             ip: result.host.address,
@@ -209,8 +227,14 @@ class ScanOrchestrator {
       }
     }
 
-    await Future.wait(pendingNames);
-    await controller.close();
+    // Only wait for background helpers (DNS, mDNS, SSDP, NetBIOS, banners)
+    // when the scan ran to completion. On cancellation, close immediately —
+    // the helpers will finish on their own but check controller.isClosed
+    // before writing, so no events are lost or errored.
+    if (!_cancelled) {
+      await Future.wait(pendingNames);
+    }
+    if (!controller.isClosed) await controller.close();
   }
 
   Future<void> _runMdns(
@@ -220,6 +244,7 @@ class ScanOrchestrator {
   ) async {
     try {
       await for (final obs in _mdns.discover()) {
+        if (_cancelled || controller.isClosed) break;
         final InternetAddress addr;
         try {
           addr = InternetAddress(obs.ip);
@@ -251,6 +276,7 @@ class ScanOrchestrator {
   ) async {
     try {
       await for (final obs in _ssdp.discover()) {
+        if (_cancelled || controller.isClosed) break;
         final InternetAddress addr;
         try {
           addr = InternetAddress(obs.ip);
@@ -287,6 +313,7 @@ class ScanOrchestrator {
     var next = 0;
     Future<void> worker() async {
       while (next < hosts.length) {
+        if (_cancelled) break;
         final host = hosts[next++];
         final name = await _netbios.queryName(host);
         if (name == null || controller.isClosed) continue;
@@ -314,10 +341,12 @@ class ScanOrchestrator {
     ScanNetwork network,
     DateTime now,
   ) async {
+    if (_cancelled) return;
     final ports = result.openPorts.where(_bannerPorts.contains).toList();
     if (ports.isEmpty) return;
     final services = <int, String>{};
     await Future.wait(ports.map((port) async {
+      if (_cancelled) return;
       final raw = await _banner.grab(result.host, port);
       if (raw == null) return;
       final service = identifyService(port, raw);
@@ -341,6 +370,7 @@ class ScanOrchestrator {
     ScanNetwork network,
     DateTime now,
   ) async {
+    if (_cancelled) return;
     final name = await _resolveHostname(addr);
     if (name == null || controller.isClosed) return;
     controller.add(
