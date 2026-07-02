@@ -186,6 +186,12 @@ class ScanController extends Notifier<ScanState> {
   String? _gatewayIp;
   OuiVendorLookup _oui = const OuiVendorLookup({});
 
+  // Foreground scan cancellation: keep the orchestrator and completer so
+  // stopScan() can signal workers and unblock startScan()'s await.
+  ScanOrchestrator? _orchestrator;
+  Completer<void>? _scanCompleter;
+  bool _scanWasStopped = false;
+
   /// Live-monitoring state: when [_monitoring] is on, the network is re-scanned
   /// every configured refresh interval (see [_scheduleNextTick]) and each pass
   /// is diffed against the previous to surface newly-appeared devices.
@@ -193,6 +199,10 @@ class ScanController extends Notifier<ScanState> {
   ScanNetwork? _monitorNetwork;
   Timer? _monitorTimer;
   StreamSubscription<Device>? _monitorSub;
+
+  // Background scan cancellation (monitoring ticks).
+  ScanOrchestrator? _monitorOrchestrator;
+  Completer<void>? _monitorCompleter;
 
   /// Builds a [ScanOrchestrator] with each scan phase enabled per the user's
   /// current settings, falling back to all-enabled (prior behavior) until
@@ -226,6 +236,7 @@ class ScanController extends Notifier<ScanState> {
     await _sub?.cancel();
     _byIp.clear();
     _probed = 0;
+    _scanWasStopped = false;
     _gatewayIp = network.gateway?.address;
 
     _oui = await ref.read(ouiLookupProvider.future);
@@ -240,7 +251,9 @@ class ScanController extends Notifier<ScanState> {
     );
 
     final orchestrator = _buildOrchestrator();
+    _orchestrator = orchestrator;
     final completer = Completer<void>();
+    _scanCompleter = completer;
     _sub = orchestrator
         .scan(
       network,
@@ -256,17 +269,29 @@ class ScanController extends Notifier<ScanState> {
         _emit(isScanning: true);
       },
       onError: (_) {},
-      onDone: () => completer.complete(),
+      onDone: () {
+        if (!completer.isCompleted) completer.complete();
+      },
       cancelOnError: false,
     );
 
     await completer.future;
+    _scanCompleter = null;
+    _orchestrator = null;
     _emit(isScanning: false);
-    await _recordLatency(network, _byIp.values.toList());
-    await _saveHistory(network, _byIp.values.toList());
+    if (!_scanWasStopped) {
+      await _recordLatency(network, _byIp.values.toList());
+      await _saveHistory(network, _byIp.values.toList());
+    }
   }
 
   Future<void> stopScan() async {
+    _scanWasStopped = true;
+    _orchestrator?.cancel();
+    _orchestrator = null;
+    final sc = _scanCompleter;
+    _scanCompleter = null;
+    if (sc != null && !sc.isCompleted) sc.complete();
     _stopMonitoring();
     await _sub?.cancel();
     _sub = null;
@@ -300,11 +325,15 @@ class ScanController extends Notifier<ScanState> {
     _monitoring = false;
     _monitorTimer?.cancel();
     _monitorTimer = null;
+    _monitorOrchestrator?.cancel();
+    _monitorOrchestrator = null;
+    final mc = _monitorCompleter;
+    _monitorCompleter = null;
+    if (mc != null && !mc.isCompleted) mc.complete();
     _monitorSub?.cancel();
     _monitorSub = null;
-    // Cancelling _monitorSub mid-scan means the in-flight _backgroundScan's
-    // onDone never fires, so its own `isBackgroundScanning = false` won't run —
-    // clear the progress-bar flag here so the bar doesn't linger after stop.
+    // Cancelling mid-scan means the in-flight _backgroundScan's onDone never
+    // fires — clear the progress-bar flag here so it doesn't linger after stop.
     state = state.copyWith(isBackgroundScanning: false);
     _emit();
   }
@@ -336,7 +365,9 @@ class ScanController extends Notifier<ScanState> {
     final typeStore = await ref.read(typeOverrideStoreProvider.future);
     final byIp = <String, Device>{};
     final orchestrator = _buildOrchestrator();
+    _monitorOrchestrator = orchestrator;
     final completer = Completer<void>();
+    _monitorCompleter = completer;
     // Surface the otherwise-invisible re-scan as a progress bar, without
     // touching the displayed device list. Progress lives in dedicated
     // background fields so it can't collide with a foreground scan's display.
@@ -357,10 +388,14 @@ class ScanController extends Notifier<ScanState> {
         byIp[observation.ip] = _decorate(merged, store, typeStore);
       },
       onError: (_) {},
-      onDone: () => completer.complete(),
+      onDone: () {
+        if (!completer.isCompleted) completer.complete();
+      },
       cancelOnError: false,
     );
     await completer.future;
+    _monitorCompleter = null;
+    _monitorOrchestrator = null;
     state = state.copyWith(isBackgroundScanning: false);
     return byIp.values.toList();
   }
