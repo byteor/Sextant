@@ -110,15 +110,29 @@ flutter run -d windows  # Windows
 
 ### Build release binaries
 
+Pass `--build-name` and `--build-number` so the bundle version metadata (`CFBundleShortVersionString` on macOS, etc.) matches what the app displays. The version is read from [lib/version.dart](lib/version.dart) — the single source of truth — so a version bump there propagates everywhere automatically.
+
+**macOS / Linux (bash):**
 ```bash
-# macOS — produces sextant.app
-flutter build macos --release
+BUILD_NAME=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+').$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
+BUILD_NUM=$(git rev-list --count HEAD)
 
-# Linux — produces a self-contained bundle directory
-flutter build linux --release
+flutter build macos --release \
+  --build-name=$BUILD_NAME --build-number=$BUILD_NUM --dart-define=BUILD_NUMBER=$BUILD_NUM
 
-# Windows — produces an MSIX-ready directory
-flutter build windows --release
+flutter build linux --release \
+  --build-name=$BUILD_NAME --build-number=$BUILD_NUM --dart-define=BUILD_NUMBER=$BUILD_NUM
+```
+
+**Windows (PowerShell):**
+```powershell
+$Major    = (Select-String 'kAppVersionMajor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+$Minor    = (Select-String 'kAppVersionMinor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+$BuildName = "$Major.$Minor"
+$BuildNum  = git rev-list --count HEAD
+
+flutter build windows --release `
+  --build-name=$BuildName --build-number=$BuildNum --dart-define=BUILD_NUMBER=$BuildNum
 ```
 
 ---
@@ -127,31 +141,27 @@ flutter build windows --release
 
 ### macOS — DMG
 
-The release build produces `build/macos/Build/Products/Release/sextant.app`. Package it as a distributable disk image using [`create-dmg`](https://github.com/create-dmg/create-dmg):
+The release build produces `build/macos/Build/Products/Release/sextant.app`. Use [`create-dmg`](https://github.com/create-dmg/create-dmg) to produce a traditional drag-to-Applications installer — it places the app icon and an Applications folder alias side by side in a clean window:
 
 ```bash
 brew install create-dmg
+
 create-dmg \
   --volname "Sextant" \
   --window-pos 200 120 \
-  --window-size 660 400 \
+  --window-size 540 380 \
   --icon-size 128 \
-  --app-drop-link 440 170 \
+  --icon "sextant.app" 140 190 \
+  --app-drop-link 400 190 \
   "Sextant.dmg" \
   "build/macos/Build/Products/Release/sextant.app"
 ```
 
-Or create a plain DMG with the built-in `hdiutil`:
-
-```bash
-hdiutil create \
-  -volname "Sextant" \
-  -srcfolder "build/macos/Build/Products/Release/sextant.app" \
-  -ov -format UDZO \
-  Sextant.dmg
-```
+> **Important:** the last argument must point to the `.app` bundle itself, not its parent directory.
 
 For distribution outside your own machine, sign and notarize the app with your Apple Developer certificate before packaging.
+
+> **Troubleshooting:** if the installed app doesn't appear in Spotlight, or the DMG looks wrong, see [docs/macos-distribution.md](docs/macos-distribution.md) for a full diagnosis guide covering signing setup, `CFBundleDisplayName`, `LSApplicationCategoryType`, the expired WWDR intermediate CA, and rebuilding the Spotlight index.
 
 ### Linux — tar.gz / AppImage / deb
 

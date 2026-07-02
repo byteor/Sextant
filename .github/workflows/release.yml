@@ -21,21 +21,78 @@ jobs:
           channel: stable
           cache: true
 
+      # Import the Apple Development certificate and the WWDR G3 intermediate
+      # CA into a temporary keychain so codesign can sign the build.
+      # Requires three repository secrets:
+      #   MACOS_CERTIFICATE     – base64-encoded .p12 export of the cert
+      #   MACOS_CERTIFICATE_PWD – password used when exporting the .p12
+      #   MACOS_KEYCHAIN_PWD    – any random string; used only for this keychain
+      - name: Import signing certificate
+        env:
+          MACOS_CERTIFICATE:     ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          MACOS_KEYCHAIN_PWD:    ${{ secrets.MACOS_KEYCHAIN_PWD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/cert.p12
+          WWDR_PATH=$RUNNER_TEMP/wwdr.cer
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+
+          echo -n "$MACOS_CERTIFICATE" | base64 --decode -o "$CERT_PATH"
+          curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+               -o "$WWDR_PATH"
+
+          security create-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
+          security import "$WWDR_PATH" -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+
+          # Allow codesign to use the private key without an interactive prompt.
+          security set-key-partition-list \
+            -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build
         run: |
+          MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
+          MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
+          BUILD_NAME="$MAJOR.$MINOR"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build macos --release \
+            --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUM" \
             --dart-define="BUILD_NUMBER=$BUILD_NUM"
+
+      - name: Package DMG
+        run: |
+          brew install create-dmg
+          MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
+          MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
+          create-dmg \
+            --volname "Sextant" \
+            --window-pos 200 120 \
+            --window-size 540 380 \
+            --icon-size 128 \
+            --icon "sextant.app" 140 190 \
+            --app-drop-link 400 190 \
+            "Sextant-$MAJOR.$MINOR.dmg" \
+            "build/macos/Build/Products/Release/sextant.app"
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/signing.keychain-db
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: sextant-macos
-          path: build/macos/Build/Products/Release/sextant.app
+          path: Sextant-*.dmg
           if-no-files-found: error
 
   # ── Linux ──────────────────────────────────────────────────────────────────
@@ -64,8 +121,12 @@ jobs:
 
       - name: Build
         run: |
+          MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
+          MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
+          BUILD_NAME="$MAJOR.$MINOR"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build linux --release \
+            --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUM" \
             --dart-define="BUILD_NUMBER=$BUILD_NUM"
 
@@ -103,8 +164,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          $BuildNum = git rev-list --count HEAD
+          $Major    = (Select-String 'kAppVersionMajor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+          $Minor    = (Select-String 'kAppVersionMinor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
+          $BuildName = "$Major.$Minor"
+          $BuildNum  = git rev-list --count HEAD
           flutter build windows --release `
+            --build-name="$BuildName" `
             --build-number="$BuildNum" `
             --dart-define="BUILD_NUMBER=$BuildNum"
 
