@@ -77,7 +77,7 @@ class MdnsDiscovery {
   const MdnsDiscovery();
 
   Stream<MdnsObservation> discover({
-    Duration timeout = const Duration(seconds: 4),
+    Duration timeout = const Duration(seconds: 8),
   }) {
     final controller = StreamController<MdnsObservation>();
     unawaited(_run(controller, timeout));
