@@ -111,7 +111,10 @@ class ScanScreen extends ConsumerWidget {
                   // background monitor re-scan shows the same bar, driven by
                   // its own progress so it doesn't disturb a foreground scan.
                   value: scan.isScanning
-                      ? (scan.total > 0 ? scan.progress : null)
+                      // Use the monotonic weighted progress (0→0.8 ICMP,
+                      // 0.8→1.0 TCP). Switch to indeterminate once both phases
+                      // finish and only background enrichment remains.
+                      ? (scan.scanProgress < 1.0 ? scan.scanProgress : null)
                       : (scan.backgroundTotal > 0
                           ? scan.backgroundProgress
                           : null),

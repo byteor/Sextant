@@ -118,10 +118,11 @@ class ScanOrchestrator {
   Stream<Device> scan(
     ScanNetwork network, {
     HostProgress? onHostComplete,
+    void Function(double)? onProgress,
   }) {
     _cancelled = false;
     final controller = StreamController<Device>();
-    unawaited(_run(network, controller, onHostComplete));
+    unawaited(_run(network, controller, onHostComplete, onProgress));
     return controller.stream;
   }
 
@@ -129,6 +130,7 @@ class ScanOrchestrator {
     ScanNetwork network,
     StreamController<Device> controller,
     HostProgress? onHostComplete,
+    void Function(double)? onProgress,
   ) async {
     final hosts = network.subnet.hostAddresses().toList();
     final now = DateTime.now();
@@ -157,14 +159,23 @@ class ScanOrchestrator {
           latencyMs: latencyMs,
         );
 
+    // Progress weights: when both ICMP and TCP are enabled, ICMP fills 0→80%
+    // and TCP fills 80→100%. If only one phase is enabled it fills 0→100%.
+    // This keeps progress strictly increasing — ICMP can never hit 100% while
+    // TCP is still pending, so there is no backwards step when TCP kicks in.
+    final double icmpEnd = (icmpEnabled && tcpEnabled) ? 0.8 : 1.0;
+    final double tcpStart = icmpEnabled ? icmpEnd : 0.0;
+    final double tcpRange = 1.0 - tcpStart;
+
     // Phase 1: ping sweep — emit each responder the instant it answers, and
     // kick off reverse DNS in the background.
     if (icmpEnabled && !_cancelled) {
       await for (final result in _icmp.sweep(
         hosts,
-        onProgress: onHostComplete == null
-            ? null
-            : (done, total) => onHostComplete(done, total),
+        onProgress: (done, total) {
+          onHostComplete?.call(done, total);
+          if (total > 0) onProgress?.call(icmpEnd * done / total);
+        },
         isCancelled: () => _cancelled,
       )) {
         if (_cancelled) break;
@@ -207,9 +218,14 @@ class ScanOrchestrator {
     // Phase 3: port-scan the live hosts; emit ports as each host completes,
     // then grab banners on identifiable ports to name the running services.
     if (tcpEnabled && !_cancelled) {
+      final liveCount = live.length;
       await for (final result in _scanner.scan(
         live.values.toList(),
         _ports,
+        onHostComplete: liveCount == 0 || onProgress == null
+            ? null
+            : (done, _) =>
+                onProgress(tcpStart + tcpRange * done / liveCount),
         isCancelled: () => _cancelled,
       )) {
         if (_cancelled) break;

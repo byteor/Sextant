@@ -7,6 +7,7 @@ class ScanState {
     this.devices = const [],
     this.scanned = 0,
     this.total = 0,
+    this.scanProgress = 0.0,
     this.enriching = false,
     this.isMonitoring = false,
     this.lastNewDevices = const [],
@@ -20,9 +21,14 @@ class ScanState {
   /// Discovered devices, always sorted by IPv4 address ascending.
   final List<Device> devices;
 
-  /// Hosts probed so far / total hosts in the subnet (scan progress).
+  /// Hosts probed so far / total hosts in the subnet (used for status text).
   final int scanned;
   final int total;
+
+  /// Monotonically-increasing scan progress (0.0–1.0) used by the progress bar.
+  /// Weighted across phases: ICMP fills 0→0.8 when TCP is also enabled, TCP
+  /// fills 0.8→1.0 (or the full 0→1.0 when the other phase is disabled).
+  final double scanProgress;
 
   /// True while MAC/vendor enrichment runs after the host sweep completes.
   final bool enriching;
@@ -58,6 +64,7 @@ class ScanState {
     List<Device>? devices,
     int? scanned,
     int? total,
+    double? scanProgress,
     bool? enriching,
     bool? isMonitoring,
     List<Device>? lastNewDevices,
@@ -70,6 +77,7 @@ class ScanState {
       devices: devices ?? this.devices,
       scanned: scanned ?? this.scanned,
       total: total ?? this.total,
+      scanProgress: scanProgress ?? this.scanProgress,
       enriching: enriching ?? this.enriching,
       isMonitoring: isMonitoring ?? this.isMonitoring,
       lastNewDevices: lastNewDevices ?? this.lastNewDevices,
