@@ -183,6 +183,7 @@ class ScanController extends Notifier<ScanState> {
   StreamSubscription<Device>? _sub;
   final Map<String, Device> _byIp = {};
   int _probed = 0;
+  double _scanProgress = 0.0;
   String? _gatewayIp;
   OuiVendorLookup _oui = const OuiVendorLookup({});
 
@@ -236,6 +237,7 @@ class ScanController extends Notifier<ScanState> {
     await _sub?.cancel();
     _byIp.clear();
     _probed = 0;
+    _scanProgress = 0.0;
     _scanWasStopped = false;
     _gatewayIp = network.gateway?.address;
 
@@ -259,6 +261,10 @@ class ScanController extends Notifier<ScanState> {
       network,
       onHostComplete: (done, _) {
         _probed = done;
+        _emit(isScanning: true);
+      },
+      onProgress: (p) {
+        _scanProgress = p;
         _emit(isScanning: true);
       },
     )
@@ -561,6 +567,7 @@ class ScanController extends Notifier<ScanState> {
     state = state.copyWith(
       devices: dedupeMultihomed(sorted),
       scanned: _probed,
+      scanProgress: _scanProgress,
       isScanning: isScanning,
       enriching: enriching,
       isMonitoring: _monitoring,
