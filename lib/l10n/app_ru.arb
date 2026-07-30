@@ -4,7 +4,7 @@
   "settingsTitle": "Настройки",
   "settingsLoadError": "Не удалось загрузить настройки: {error}",
 
-  "sectionAppearance": "Внешний вид",
+  "sectionAppearance": "Тема",
   "appearanceLight": "Светлая",
   "appearanceDark": "Тёмная",
   "appearanceAuto": "Авто",
@@ -25,9 +25,9 @@
   "protocolSsdp": "SSDP / UPnP",
 
   "sectionHistory": "История",
-  "saveScanHistory": "Сохранять историю сканирований",
-  "retentionTitle": "Хранение",
-  "retentionSubtitle": "Максимум сохранённых снимков сканирования",
+  "saveScanHistory": "Сохранять историю",
+  "retentionTitle": "Глубина истории",
+  "retentionSubtitle": "Максимум сохранённых сканирований",
 
   "sectionVendorDatabase": "База производителей",
   "vendorDbUpdateTitle": "Обновить из реестра IEEE",
@@ -43,7 +43,7 @@
   "clearAllHistoryTooltip": "Очистить всю историю",
   "historyLoadError": "Не удалось загрузить историю: {error}",
   "clearHistoryDialogTitle": "Очистить историю сканирований?",
-  "clearHistoryDialogBody": "Это навсегда удалит все сохранённые снимки сканирования и журнал изменений. Это действие нельзя отменить.",
+  "clearHistoryDialogBody": "Это навсегда удалит всю историю сканирования и журнал изменений. Это действие нельзя отменить.",
   "cancel": "Отмена",
   "clear": "Очистить",
   "noChangesRecorded": "Изменений пока не зафиксировано — это исходное состояние.",
@@ -84,7 +84,7 @@
   "typeUnknown": "Неизвестно",
 
   "aboutTitle": "Sextant",
-  "aboutBody": "Лёгкий сканер локальной сети для обнаружения устройств и наблюдения за ними.",
+  "aboutBody": "Сканер локальной сети для обнаружения устройств и наблюдения за ними.",
   "builtWithFlutter": "Создано с использованием Flutter.",
   "close": "Закрыть",
 
@@ -98,7 +98,7 @@
   "scanButtonLabel": "СКАН",
   "stopButtonLabel": "СТОП",
   "monitoringStopTooltip": "Остановить мониторинг",
-  "monitoringStartTooltip": "Мониторинг в реальном времени — пересканирование и оповещение о новых устройствах",
+  "monitoringStartTooltip": "Мониторинг в реальном времени — сканирование и оповещение о новых устройствах",
   "exportScanTooltip": "Экспорт сканирования",
   "exportAsCsv": "Экспорт в CSV…",
   "exportAsJson": "Экспорт в JSON…",

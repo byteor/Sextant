@@ -78,8 +78,9 @@ void main() {
     expect(container.read(settingsProvider).value!.themeMode, ThemeMode.light);
   });
 
-  testWidgets('shows a language picker with System default, English and '
-      'Русский options', (tester) async {
+  testWidgets(
+      'shows a language picker with System default and all five languages',
+      (tester) async {
     await pumpSettings(tester);
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('System default'), findsOneWidget);
@@ -87,6 +88,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('English'), findsWidgets);
     expect(find.text('Русский'), findsOneWidget);
+    expect(find.text('Español'), findsOneWidget);
+    expect(find.text('Deutsch'), findsOneWidget);
+    expect(find.text('Français'), findsOneWidget);
+  });
+
+  testWidgets('lists languages alphabetically by native name, below System '
+      'default', (tester) async {
+    await pumpSettings(tester);
+    await tester.tap(find.byType(DropdownButton<Locale?>));
+    await tester.pumpAndSettle();
+
+    // The dropdown's menu items render in build order. The currently
+    // selected item (System default) additionally renders once more inside
+    // the closed-button area, so dedupe consecutive repeats rather than
+    // asserting on the raw widget list.
+    final labels = tester
+        .widgetList<Text>(find.descendant(
+          of: find.byType(DropdownMenuItem<Locale?>),
+          matching: find.byType(Text),
+        ))
+        .map((t) => t.data)
+        .toList();
+    final deduped = [
+      for (var i = 0; i < labels.length; i++)
+        if (i == 0 || labels[i] != labels[i - 1]) labels[i],
+    ];
+
+    expect(
+      deduped,
+      ['System default', 'Deutsch', 'English', 'Español', 'Français', 'Русский'],
+    );
   });
 
   testWidgets('selecting a language updates settingsProvider', (tester) async {
@@ -142,10 +174,20 @@ void main() {
   testWidgets('renders in Russian when the app locale is ru', (tester) async {
     await pumpSettings(tester, locale: const Locale('ru'));
     expect(find.text('Настройки'), findsOneWidget); // AppBar title
-    expect(find.text('Внешний вид'), findsOneWidget); // Appearance section
+    expect(find.text('Тема'), findsOneWidget); // Appearance section
     expect(find.text('Язык'), findsOneWidget); // Language section
     expect(find.text('Сканирование'), findsOneWidget); // Scanning section
     expect(find.text('История'), findsOneWidget); // History section
     expect(find.text('База производителей'), findsOneWidget);
+  });
+
+  testWidgets('renders in French when the app locale is fr', (tester) async {
+    await pumpSettings(tester, locale: const Locale('fr'));
+    expect(find.text('Paramètres'), findsOneWidget); // AppBar title
+    expect(find.text('Thème'), findsOneWidget); // Appearance section
+    expect(find.text('Langue'), findsOneWidget); // Language section
+    expect(find.text('Analyse'), findsOneWidget); // Scanning section
+    expect(find.text('Historique'), findsOneWidget); // History section
+    expect(find.text('Base des fabricants'), findsOneWidget);
   });
 }

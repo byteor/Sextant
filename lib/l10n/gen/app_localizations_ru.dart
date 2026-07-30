@@ -17,7 +17,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get sectionAppearance => 'Внешний вид';
+  String get sectionAppearance => 'Тема';
 
   @override
   String get appearanceLight => 'Светлая';
@@ -80,13 +80,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sectionHistory => 'История';
 
   @override
-  String get saveScanHistory => 'Сохранять историю сканирований';
+  String get saveScanHistory => 'Сохранять историю';
 
   @override
-  String get retentionTitle => 'Хранение';
+  String get retentionTitle => 'Глубина истории';
 
   @override
-  String get retentionSubtitle => 'Максимум сохранённых снимков сканирования';
+  String get retentionSubtitle => 'Максимум сохранённых сканирований';
 
   @override
   String get sectionVendorDatabase => 'База производителей';
@@ -143,7 +143,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get clearHistoryDialogBody =>
-      'Это навсегда удалит все сохранённые снимки сканирования и журнал изменений. Это действие нельзя отменить.';
+      'Это навсегда удалит всю историю сканирования и журнал изменений. Это действие нельзя отменить.';
 
   @override
   String get cancel => 'Отмена';
@@ -288,7 +288,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutBody =>
-      'Лёгкий сканер локальной сети для обнаружения устройств и наблюдения за ними.';
+      'Сканер локальной сети для обнаружения устройств и наблюдения за ними.';
 
   @override
   String get builtWithFlutter => 'Создано с использованием Flutter.';
@@ -342,7 +342,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get monitoringStartTooltip =>
-      'Мониторинг в реальном времени — пересканирование и оповещение о новых устройствах';
+      'Мониторинг в реальном времени — сканирование и оповещение о новых устройствах';
 
   @override
   String get exportScanTooltip => 'Экспорт сканирования';

@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
 const List<Locale> kSupportedLocales = [
   Locale('en'),
   Locale('ru'),
+  Locale('es'),
+  Locale('de'),
+  Locale('fr'),
 ];
 
 /// Each supported locale's name in its own language, for the picker, keyed by
@@ -17,4 +20,7 @@ const List<Locale> kSupportedLocales = [
 const Map<String, String> kLocaleNativeNames = {
   'en': 'English',
   'ru': 'Русский',
+  'es': 'Español',
+  'de': 'Deutsch',
+  'fr': 'Français',
 };

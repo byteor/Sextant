@@ -94,6 +94,14 @@ class _LanguageSection extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final locale = ref.watch(settingsProvider).value?.locale;
 
+    // Sorted by each language's own native name (not by locale code), so the
+    // list reads alphabetically regardless of the order locales were added
+    // to kSupportedLocales in. "System default" stays pinned above it — it's
+    // a meta option, not a language.
+    final sortedLocales = [...kSupportedLocales]..sort(
+        (a, b) => _nativeName(a).compareTo(_nativeName(b)),
+      );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -108,11 +116,10 @@ class _LanguageSection extends ConsumerWidget {
                 value: null,
                 child: Text(l10n.languageSystemDefault),
               ),
-              for (final supported in kSupportedLocales)
+              for (final supported in sortedLocales)
                 DropdownMenuItem(
                   value: supported,
-                  child: Text(kLocaleNativeNames[supported.languageCode] ??
-                      supported.languageCode),
+                  child: Text(_nativeName(supported)),
                 ),
             ],
             onChanged: (selected) => ref
@@ -124,6 +131,9 @@ class _LanguageSection extends ConsumerWidget {
       ],
     );
   }
+
+  static String _nativeName(Locale locale) =>
+      kLocaleNativeNames[locale.languageCode] ?? locale.languageCode;
 }
 
 const _intervalPresets = [10, 30, 60, 120, 300];
