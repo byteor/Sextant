@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/gen/app_localizations.dart';
+import '../l10n/supported_locales.dart';
 import '../model/app_settings.dart';
 import '../model/scan_protocol.dart';
 import '../state/providers.dart';
@@ -12,16 +14,19 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(settingsProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load settings: $e')),
+        error: (e, _) =>
+            Center(child: Text(l10n.settingsLoadError(e.toString()))),
         data: (settings) => ListView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: const [
             _AppearanceSection(),
+            _LanguageSection(),
             _ScanningSection(),
             _HistorySection(),
             _VendorDatabaseSection(),
@@ -48,20 +53,24 @@ class _AppearanceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final themeMode = ref.watch(settingsProvider).value?.themeMode ??
         ThemeMode.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader('Appearance'),
+        _SectionHeader(l10n.sectionAppearance),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
-              ButtonSegment(value: ThemeMode.system, label: Text('Auto')),
+            segments: [
+              ButtonSegment(
+                  value: ThemeMode.light, label: Text(l10n.appearanceLight)),
+              ButtonSegment(
+                  value: ThemeMode.dark, label: Text(l10n.appearanceDark)),
+              ButtonSegment(
+                  value: ThemeMode.system, label: Text(l10n.appearanceAuto)),
             ],
             selected: {themeMode},
             onSelectionChanged: (selection) => ref
@@ -75,28 +84,72 @@ class _AppearanceSection extends ConsumerWidget {
   }
 }
 
+/// `null` represents "System default" — matches [AppSettings.locale]'s own
+/// null-means-system convention.
+class _LanguageSection extends ConsumerWidget {
+  const _LanguageSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final locale = ref.watch(settingsProvider).value?.locale;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(l10n.sectionLanguage),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButton<Locale?>(
+            value: locale,
+            isExpanded: true,
+            items: [
+              DropdownMenuItem(
+                value: null,
+                child: Text(l10n.languageSystemDefault),
+              ),
+              for (final supported in kSupportedLocales)
+                DropdownMenuItem(
+                  value: supported,
+                  child: Text(kLocaleNativeNames[supported.languageCode] ??
+                      supported.languageCode),
+                ),
+            ],
+            onChanged: (selected) => ref
+                .read(settingsProvider.notifier)
+                .setLocale(selected),
+          ),
+        ),
+        const Divider(height: 24),
+      ],
+    );
+  }
+}
+
 const _intervalPresets = [10, 30, 60, 120, 300];
-String _intervalLabel(int seconds) =>
-    seconds < 60 ? '${seconds}s' : '${seconds ~/ 60} min';
+String _intervalLabel(AppLocalizations l10n, int seconds) => seconds < 60
+    ? l10n.durationSeconds(seconds)
+    : l10n.durationMinutes(seconds ~/ 60);
 
 class _ScanningSection extends ConsumerWidget {
   const _ScanningSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final settings = ref.watch(settingsProvider).value ?? const AppSettings();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader('Scanning'),
+        _SectionHeader(l10n.sectionScanning),
         ListTile(
-          title: const Text('Auto-refresh interval'),
+          title: Text(l10n.autoRefreshInterval),
           trailing: DropdownButton<int>(
             value: settings.monitorIntervalSeconds,
             items: [
               for (final s in _intervalPresets)
-                DropdownMenuItem(value: s, child: Text(_intervalLabel(s))),
+                DropdownMenuItem(value: s, child: Text(_intervalLabel(l10n, s))),
             ],
             onChanged: (s) => s == null
                 ? null
@@ -107,10 +160,10 @@ class _ScanningSection extends ConsumerWidget {
         ),
         for (final protocol in ScanProtocol.values)
           SwitchListTile(
-            title: Text(protocol.label),
+            title: Text(protocol.label(l10n)),
             subtitle: protocol.isAvailableOnThisPlatform
                 ? null
-                : const Text('Not available on this platform'),
+                : Text(l10n.protocolNotAvailable),
             value: protocol.isAvailableOnThisPlatform &&
                 settings.enabledProtocols.contains(protocol),
             onChanged: !protocol.isAvailableOnThisPlatform
@@ -132,21 +185,22 @@ class _HistorySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final settings = ref.watch(settingsProvider).value ?? const AppSettings();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader('History'),
+        _SectionHeader(l10n.sectionHistory),
         SwitchListTile(
-          title: const Text('Save scan history'),
+          title: Text(l10n.saveScanHistory),
           value: settings.historyEnabled,
           onChanged: (v) =>
               ref.read(settingsProvider.notifier).setHistoryEnabled(v),
         ),
         ListTile(
-          title: const Text('Retention'),
-          subtitle: const Text('Maximum saved scan snapshots'),
+          title: Text(l10n.retentionTitle),
+          subtitle: Text(l10n.retentionSubtitle),
           enabled: settings.historyEnabled,
           trailing: DropdownButton<int>(
             value: settings.historyRetention,
@@ -176,35 +230,37 @@ class _VendorDatabaseSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final settings = ref.watch(settingsProvider).value ?? const AppSettings();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader('Vendor database'),
+        _SectionHeader(l10n.sectionVendorDatabase),
         ListTile(
-          title: const Text('Update from the IEEE registry'),
-          subtitle: const Text('Improves MAC-address vendor names'),
+          title: Text(l10n.vendorDbUpdateTitle),
+          subtitle: Text(l10n.vendorDbUpdateSubtitle),
           trailing: FilledButton(
             onPressed: () => _refreshNow(context, ref),
-            child: const Text('Refresh now'),
+            child: Text(l10n.refreshNow),
           ),
         ),
         SwitchListTile(
-          title: const Text('Auto-refresh vendor database'),
+          title: Text(l10n.vendorDbAutoRefresh),
           value: settings.vendorDbAutoRefresh,
           onChanged: (v) => ref
               .read(settingsProvider.notifier)
               .setVendorDbAutoRefresh(v),
         ),
         ListTile(
-          title: const Text('Auto-refresh interval'),
+          title: Text(l10n.vendorDbAutoRefreshInterval),
           enabled: settings.vendorDbAutoRefresh,
           trailing: DropdownButton<int>(
             value: settings.vendorDbRefreshIntervalDays,
             items: [
               for (final d in _vendorDbIntervalPresets)
-                DropdownMenuItem(value: d, child: Text('$d days')),
+                DropdownMenuItem(
+                    value: d, child: Text(l10n.vendorDbIntervalDays(d))),
             ],
             onChanged: !settings.vendorDbAutoRefresh
                 ? null
@@ -220,12 +276,13 @@ class _VendorDatabaseSection extends ConsumerWidget {
   }
 
   Future<void> _refreshNow(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final refreshed = await refreshVendorDatabaseNow(ref);
     messenger.showSnackBar(SnackBar(
       content: Text(refreshed
-          ? 'Vendor database refreshed.'
-          : 'Could not refresh vendor database — check your connection.'),
+          ? l10n.vendorDbRefreshedSuccess
+          : l10n.vendorDbRefreshFailed),
     ));
   }
 }

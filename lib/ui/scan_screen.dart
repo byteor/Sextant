@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/device_identity.dart';
 import '../export/scan_export.dart';
+import '../l10n/gen/app_localizations.dart';
 import '../model/device.dart';
 import '../model/discovery_source.dart';
 import '../model/network_info.dart';
@@ -29,6 +30,7 @@ class ScanScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final networksAsync = ref.watch(networksProvider);
     final scan = ref.watch(scanControllerProvider);
+    final l10n = AppLocalizations.of(context);
 
     // When the host moves between networks, re-discover and stop any in-flight
     // scan AND any live monitoring of the now-stale subnet (unconditionally —
@@ -40,9 +42,9 @@ class ScanScreen extends ConsumerWidget {
       ref.read(scanControllerProvider.notifier).stopScan();
       ref.invalidate(networksProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Network changed — updating available networks…'),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(l10n.networkChangedSnackbar),
+          duration: const Duration(seconds: 3),
         ),
       );
     });
@@ -53,11 +55,13 @@ class ScanScreen extends ConsumerWidget {
         (prev, next) {
       if (next.isEmpty) return;
       final names = next.map((d) => d.displayName).take(3).join(', ');
-      final extra = next.length > 3 ? ' +${next.length - 3} more' : '';
-      final plural = next.length == 1 ? '' : 's';
+      final countLabel = l10n.newDeviceCount(next.length);
+      final extra = next.length > 3
+          ? ' ${l10n.newDeviceMore(next.length - 3)}'
+          : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${next.length} new device$plural: $names$extra'),
+          content: Text('${l10n.newDeviceAlert(countLabel, names)}$extra'),
           duration: const Duration(seconds: 5),
         ),
       );
@@ -133,8 +137,8 @@ class ScanScreen extends ConsumerWidget {
                 ? Center(
                     child: Text(
                       scan.isBusy
-                          ? 'Scanning…'
-                          : 'Press SCAN to discover devices on your network.',
+                          ? l10n.scanningEllipsis
+                          : l10n.pressScanHint,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   )
@@ -162,11 +166,12 @@ class _Toolbar extends ConsumerWidget {
     final selected = ref.watch(selectedNetworkProvider);
     final scan = ref.watch(scanControllerProvider);
     final effective = effectiveNetwork(networks, selected);
+    final l10n = AppLocalizations.of(context);
 
     return Row(
       children: [
         if (networks.isEmpty)
-          const Text('No active network found')
+          Text(l10n.noActiveNetworkFound)
         else
           DropdownButton<ScanNetwork>(
             value: effective,
@@ -183,9 +188,11 @@ class _Toolbar extends ConsumerWidget {
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      Text('${n.displayName}  '
-                          '(${n.subnet.networkAddress.address}'
-                          '/${n.subnet.prefixLength})'),
+                      Text(l10n.networkOption(
+                        n.displayName,
+                        n.subnet.networkAddress.address,
+                        n.subnet.prefixLength,
+                      )),
                     ],
                   ),
                 ),
@@ -202,7 +209,7 @@ class _Toolbar extends ConsumerWidget {
             onPressed: () =>
                 ref.read(scanControllerProvider.notifier).stopScan(),
             icon: const Icon(Icons.stop),
-            label: const Text('STOP'),
+            label: Text(l10n.stopButtonLabel),
           )
         else
           FilledButton.icon(
@@ -212,13 +219,13 @@ class _Toolbar extends ConsumerWidget {
                     .read(scanControllerProvider.notifier)
                     .startScan(effective),
             icon: const Icon(Icons.radar),
-            label: const Text('SCAN'),
+            label: Text(l10n.scanButtonLabel),
           ),
         const SizedBox(width: 8),
         IconButton(
           tooltip: scan.isMonitoring
-              ? 'Stop live monitoring'
-              : 'Live monitoring — re-scan and alert on new devices',
+              ? l10n.monitoringStopTooltip
+              : l10n.monitoringStartTooltip,
           isSelected: scan.isMonitoring,
           selectedIcon: const Icon(Icons.sensors),
           icon: const Icon(Icons.sensors_off_outlined),
@@ -230,24 +237,24 @@ class _Toolbar extends ConsumerWidget {
         ),
         const SizedBox(width: 8),
         PopupMenuButton<ExportFormat>(
-          tooltip: 'Export scan',
+          tooltip: l10n.exportScanTooltip,
           enabled: scan.devices.isNotEmpty && !scan.isBusy,
           icon: const Icon(Icons.download_outlined),
           onSelected: (format) => exportScan(context, scan.devices, format),
-          itemBuilder: (context) => const [
+          itemBuilder: (context) => [
             PopupMenuItem(
               value: ExportFormat.csv,
-              child: Text('Export as CSV…'),
+              child: Text(l10n.exportAsCsv),
             ),
             PopupMenuItem(
               value: ExportFormat.json,
-              child: Text('Export as JSON…'),
+              child: Text(l10n.exportAsJson),
             ),
           ],
         ),
         const SizedBox(width: 8),
         IconButton(
-          tooltip: 'Scan history',
+          tooltip: l10n.scanHistoryTooltip,
           icon: const Icon(Icons.history),
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -257,12 +264,12 @@ class _Toolbar extends ConsumerWidget {
         ),
         const Spacer(),
         IconButton(
-          tooltip: 'About',
+          tooltip: l10n.aboutTooltip,
           icon: const Icon(Icons.info_outline),
           onPressed: () => showSextantAboutDialog(context),
         ),
         IconButton(
-          tooltip: 'Settings',
+          tooltip: l10n.settingsTooltip,
           icon: const Icon(Icons.settings_outlined),
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -282,6 +289,7 @@ Future<void> exportScan(
   List<Device> devices,
   ExportFormat format,
 ) async {
+  final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final file = buildScanExport(devices, format);
   final ext = format == ExportFormat.csv ? 'csv' : 'json';
@@ -296,11 +304,12 @@ Future<void> exportScan(
     await File(location.path).writeAsString(file.content);
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Exported ${devices.length} devices to ${location.path}'),
+        content: Text(l10n.exportedDevices(devices.length, location.path)),
       ),
     );
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    messenger.showSnackBar(
+        SnackBar(content: Text(l10n.exportFailed(e.toString()))));
   }
 }
 
@@ -308,24 +317,25 @@ class _StatusBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scan = ref.watch(scanControllerProvider);
+    final l10n = AppLocalizations.of(context);
     final style = Theme.of(context).textTheme.bodySmall;
     final online = scan.devices.where((d) => d.isOnline).length;
     final offline = scan.devices.length - online;
     // Suffix shown once at least one device has gone offline, so the counts
     // reflect devices coming back online (not just the unchanging total).
-    final offlineSuffix = offline > 0 ? ', $offline offline' : '';
+    final offlineSuffix = offline > 0 ? l10n.offlineSuffix(offline) : '';
     final String status;
     if (scan.isScanning) {
-      status = 'Scanning… ${scan.devices.length} found, '
-          'scanned ${scan.scanned} of ${scan.total}';
+      status = l10n.scanningStatus(
+          scan.devices.length, scan.scanned, scan.total);
     } else if (scan.enriching) {
-      status = 'Resolving MAC addresses… ${scan.devices.length} found';
+      status = l10n.resolvingMacAddresses(scan.devices.length);
     } else if (scan.isMonitoring) {
-      status = 'Monitoring… $online online$offlineSuffix';
+      status = l10n.monitoringStatus(online, offlineSuffix);
     } else if (scan.devices.isNotEmpty) {
-      status = '$online online$offlineSuffix';
+      status = l10n.onlineStatus(online, offlineSuffix);
     } else {
-      status = 'Idle';
+      status = l10n.idleStatus;
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -365,6 +375,7 @@ class _DeviceTableHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final widths = ref.watch(columnWidthsProvider);
+    final l10n = AppLocalizations.of(context);
     final style = Theme.of(context)
         .textTheme
         .labelMedium
@@ -379,20 +390,26 @@ class _DeviceTableHeader extends ConsumerWidget {
         child: Row(
           children: [
             const SizedBox(width: _kIconWidth),
-            SizedBox(width: widths.ip, child: _headerLabel('IP address', style)),
+            SizedBox(width: widths.ip, child: _headerLabel(l10n.columnIp, style)),
             const _ColumnResizeHandle(column: ResizableColumn.ip),
-            SizedBox(width: widths.name, child: _headerLabel('Name', style)),
-            const _ColumnResizeHandle(column: ResizableColumn.name),
-            SizedBox(width: widths.mac, child: _headerLabel('MAC', style)),
-            const _ColumnResizeHandle(column: ResizableColumn.mac),
-            SizedBox(width: widths.vendor, child: _headerLabel('Vendor', style)),
-            const _ColumnResizeHandle(column: ResizableColumn.vendor),
-            Expanded(child: _headerLabel('Open ports', style)),
             SizedBox(
-                width: widths.foundVia, child: _headerLabel('Found via', style)),
+                width: widths.name, child: _headerLabel(l10n.columnName, style)),
+            const _ColumnResizeHandle(column: ResizableColumn.name),
+            SizedBox(
+                width: widths.mac, child: _headerLabel(l10n.columnMac, style)),
+            const _ColumnResizeHandle(column: ResizableColumn.mac),
+            SizedBox(
+                width: widths.vendor,
+                child: _headerLabel(l10n.columnVendor, style)),
+            const _ColumnResizeHandle(column: ResizableColumn.vendor),
+            Expanded(child: _headerLabel(l10n.columnOpenPorts, style)),
+            SizedBox(
+                width: widths.foundVia,
+                child: _headerLabel(l10n.columnFoundVia, style)),
             const _ColumnResizeHandle(column: ResizableColumn.foundVia),
             SizedBox(
-                width: widths.latency, child: _headerLabel('Latency', style)),
+                width: widths.latency,
+                child: _headerLabel(l10n.columnLatency, style)),
             const _ColumnResizeHandle(column: ResizableColumn.latency),
           ],
         ),
@@ -465,6 +482,7 @@ class DeviceRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     // Offline devices (seen on a previous monitor pass but not the latest) stay
     // in the list but are clearly de-emphasised: a hollow status dot, muted
     // text, and a struck-through name.
@@ -492,8 +510,9 @@ class DeviceRow extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Tooltip(
                   message: device.isOnline
-                      ? deviceTypeLabel(device.deviceType)
-                      : '${deviceTypeLabel(device.deviceType)} · offline',
+                      ? deviceTypeLabel(l10n, device.deviceType)
+                      : l10n.deviceTypeOfflineTooltip(
+                          deviceTypeLabel(l10n, device.deviceType)),
                   child: Icon(
                     deviceIcon(device),
                     size: 20,
@@ -519,7 +538,8 @@ class DeviceRow extends ConsumerWidget {
                 ),
                 if (device.additionalIps.isNotEmpty)
                   Tooltip(
-                    message: 'Also seen at: ${device.additionalIps.join(', ')}',
+                    message:
+                        l10n.alsoSeenAt(device.additionalIps.join(', ')),
                     child: Padding(
                       padding: const EdgeInsets.only(left: 4),
                       child: Text(
@@ -587,7 +607,7 @@ class DeviceRow extends ConsumerWidget {
               children: [
                 for (final source in device.discoveredBy)
                   Tooltip(
-                    message: discoverySourceLabel(source),
+                    message: discoverySourceLabel(l10n, source),
                     child: Icon(
                       discoverySourceIcon(source),
                       size: 16,
@@ -636,6 +656,7 @@ class DeviceRow extends ConsumerWidget {
     WidgetRef ref,
     Offset? globalPosition,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = globalPosition ?? overlay.size.center(Offset.zero);
@@ -658,7 +679,7 @@ class DeviceRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Discovered via',
+                Text(l10n.discoveredVia,
                     style: Theme.of(context).textTheme.labelSmall),
                 const SizedBox(height: 4),
                 for (final source in device.discoveredBy)
@@ -669,7 +690,7 @@ class DeviceRow extends ConsumerWidget {
                       children: [
                         Icon(discoverySourceIcon(source), size: 16),
                         const SizedBox(width: 8),
-                        Text(discoverySourceLabel(source)),
+                        Text(discoverySourceLabel(l10n, source)),
                       ],
                     ),
                   ),
@@ -679,20 +700,20 @@ class DeviceRow extends ConsumerWidget {
           const PopupMenuDivider(),
         ],
         if (canOpenWeb)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'open',
             child: ListTile(
               dense: true,
-              leading: Icon(Icons.open_in_browser),
-              title: Text('Open in browser'),
+              leading: const Icon(Icons.open_in_browser),
+              title: Text(l10n.openInBrowser),
             ),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'rename',
           child: ListTile(
             dense: true,
-            leading: Icon(Icons.drive_file_rename_outline),
-            title: Text('Rename…'),
+            leading: const Icon(Icons.drive_file_rename_outline),
+            title: Text(l10n.renameEllipsis),
           ),
         ),
         PopupMenuItem(
@@ -700,33 +721,33 @@ class DeviceRow extends ConsumerWidget {
           child: ListTile(
             dense: true,
             leading: Icon(deviceTypeIcon(device.deviceType)),
-            title: const Text('Change type…'),
+            title: Text(l10n.changeTypeEllipsis),
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'copy_ip',
           child: ListTile(
             dense: true,
-            leading: Icon(Icons.copy),
-            title: Text('Copy IP'),
+            leading: const Icon(Icons.copy),
+            title: Text(l10n.copyIp),
           ),
         ),
         if (device.mac != null)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'copy_mac',
             child: ListTile(
               dense: true,
-              leading: Icon(Icons.copy_all),
-              title: Text('Copy MAC'),
+              leading: const Icon(Icons.copy_all),
+              title: Text(l10n.copyMac),
             ),
           ),
         if (device.mac != null)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'wake',
             child: ListTile(
               dense: true,
-              leading: Icon(Icons.flash_on_outlined),
-              title: Text('Wake on LAN'),
+              leading: const Icon(Icons.flash_on_outlined),
+              title: Text(l10n.wakeOnLan),
             ),
           ),
       ],
@@ -750,46 +771,48 @@ class DeviceRow extends ConsumerWidget {
   }
 
   Future<void> _wakeOnLan(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
       await const WakeOnLan().send(device.mac!);
       messenger.showSnackBar(
-        SnackBar(content: Text('Magic packet sent to ${device.mac}')),
+        SnackBar(content: Text(l10n.magicPacketSent(device.mac!))),
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Could not send magic packet: $e')),
+        SnackBar(content: Text(l10n.magicPacketFailed(e.toString()))),
       );
     }
   }
 
   Future<void> _renameDialog(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final controller = TextEditingController(text: device.customName ?? '');
     final name = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Rename ${device.ip}'),
+        title: Text(l10n.renameDialogTitle(device.ip)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Device name',
-            hintText: 'e.g. Office Printer',
+          decoration: InputDecoration(
+            labelText: l10n.deviceNameLabel,
+            hintText: l10n.deviceNameHint,
           ),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, null),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, ''),
-            child: const Text('Clear'),
+            child: Text(l10n.clear),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Save'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -802,11 +825,12 @@ class DeviceRow extends ConsumerWidget {
   }
 
   Future<void> _changeTypeDialog(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     const sentinelAuto = 'auto';
     final selected = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: Text('Device type · ${device.ip}'),
+        title: Text(l10n.deviceTypeDialogTitle(device.ip)),
         children: [
           for (final type in DeviceType.values)
             SimpleDialogOption(
@@ -815,7 +839,7 @@ class DeviceRow extends ConsumerWidget {
                 children: [
                   Icon(deviceTypeIcon(type), size: 20),
                   const SizedBox(width: 12),
-                  Text(deviceTypeLabel(type)),
+                  Text(deviceTypeLabel(l10n, type)),
                   if (type == device.deviceType) ...[
                     const Spacer(),
                     const Icon(Icons.check, size: 18),
@@ -826,11 +850,11 @@ class DeviceRow extends ConsumerWidget {
           const Divider(),
           SimpleDialogOption(
             onPressed: () => Navigator.pop(context, sentinelAuto),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.auto_awesome, size: 20),
-                SizedBox(width: 12),
-                Text('Reset to automatic'),
+                const Icon(Icons.auto_awesome, size: 20),
+                const SizedBox(width: 12),
+                Text(l10n.resetToAutomatic),
               ],
             ),
           ),
@@ -858,11 +882,13 @@ class _StatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final latency = latencyMs == null
         ? ''
-        : ' · ${latencyMs! < 1 ? '<1' : latencyMs!.toStringAsFixed(0)} ms';
+        : l10n.latencySuffix(
+            latencyMs! < 1 ? '<1' : latencyMs!.toStringAsFixed(0));
     return Tooltip(
-      message: (online ? 'Online' : 'Offline') + latency,
+      message: (online ? l10n.statusOnline : l10n.statusOffline) + latency,
       child: Container(
         width: 9,
         height: 9,
@@ -888,6 +914,7 @@ class _PortChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final known = service != null;
     final label = kWellKnownPorts[port];
     final chip = Container(
@@ -901,8 +928,8 @@ class _PortChip extends StatelessWidget {
       child: Text('$port', style: Theme.of(context).textTheme.labelSmall),
     );
     final tip = [
-      if (label != null) '$port · $label' else '$port',
-      if (service != null) '→ $service',
+      if (label != null) l10n.portWithLabel(port, label) else '$port',
+      if (service != null) l10n.portService(service!),
     ].join('  ');
     return Tooltip(message: tip, child: chip);
   }

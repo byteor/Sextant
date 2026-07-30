@@ -41,6 +41,9 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<void> setThemeMode(ThemeMode mode) =>
       _update((s) => s.copyWith(themeMode: mode));
 
+  Future<void> setLocale(Locale? locale) =>
+      _update((s) => s.copyWith(locale: locale));
+
   Future<void> setMonitorIntervalSeconds(int seconds) =>
       _update((s) => s.copyWith(monitorIntervalSeconds: seconds));
 

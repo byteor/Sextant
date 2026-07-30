@@ -3,11 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/l10n/gen/app_localizations.dart';
+import 'package:sextant/l10n/gen/app_localizations_en.dart';
+import 'package:sextant/l10n/supported_locales.dart';
 import 'package:sextant/model/scan_protocol.dart';
 import 'package:sextant/state/settings.dart';
 import 'package:sextant/ui/settings_screen.dart';
 
 void main() {
+  final l10n = AppLocalizationsEn();
+
   // settingsProvider's build() (and setThemeMode's persistence write) do
   // real dart:io File/Directory operations. Those must run via
   // tester.runAsync() — flutter_test's fake-async zone never resolves real
@@ -40,7 +45,11 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: SettingsScreen()),
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: kSupportedLocales,
+          home: const SettingsScreen(),
+        ),
       ),
     );
     await tester.pump();
@@ -65,16 +74,37 @@ void main() {
     expect(container.read(settingsProvider).value!.themeMode, ThemeMode.light);
   });
 
+  testWidgets('shows a language picker with System default, English and '
+      'Русский options', (tester) async {
+    await pumpSettings(tester);
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('System default'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButton<Locale?>));
+    await tester.pumpAndSettle();
+    expect(find.text('English'), findsWidgets);
+    expect(find.text('Русский'), findsOneWidget);
+  });
+
+  testWidgets('selecting a language updates settingsProvider', (tester) async {
+    final container = await pumpSettings(tester);
+    await tester.tap(find.byType(DropdownButton<Locale?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Русский').last);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(container.read(settingsProvider).value!.locale, const Locale('ru'));
+  });
+
   testWidgets('shows a toggle for every scan protocol', (tester) async {
     await pumpSettings(tester);
     for (final p in ScanProtocol.values) {
-      expect(find.text(p.label), findsOneWidget);
+      expect(find.text(p.label(l10n)), findsOneWidget);
     }
   });
 
   testWidgets('disabling a protocol updates settingsProvider', (tester) async {
     final container = await pumpSettings(tester);
-    await tester.tap(find.text(ScanProtocol.mdns.label));
+    await tester.tap(find.text(ScanProtocol.mdns.label(l10n)));
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     expect(

@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../l10n/gen/app_localizations.dart';
 import '../version.dart';
 
 const _aboutIconAsset = 'assets/about/about_icon.png';
-const _aboutTextAsset = 'assets/about/about_text.txt';
 
 Future<void> showSextantAboutDialog(BuildContext context) async {
-  final aboutText = (await rootBundle.loadString(_aboutTextAsset)).trim();
-  if (!context.mounted) return;
+  final l10n = AppLocalizations.of(context);
 
   showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Sextant'),
+      title: Text(l10n.aboutTitle),
       content: SizedBox(
         width: 420,
         child: Row(
@@ -26,12 +25,12 @@ Future<void> showSextantAboutDialog(BuildContext context) async {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(aboutText),
+                  MarkdownBody(data: l10n.aboutBody),
                   const SizedBox(height: 12),
                   Text(kAboutVersion,
                       style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 4),
-                  Text('Built with Flutter.',
+                  Text(l10n.builtWithFlutter,
                       style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
@@ -42,7 +41,7 @@ Future<void> showSextantAboutDialog(BuildContext context) async {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+          child: Text(l10n.close),
         ),
       ],
     ),

@@ -28,6 +28,7 @@ void main() {
     final store = SettingsStore(file);
     const custom = AppSettings(
       themeMode: ThemeMode.light,
+      locale: Locale('ru'),
       monitorIntervalSeconds: 60,
       enabledProtocols: {ScanProtocol.tcp, ScanProtocol.mdns},
       historyEnabled: false,
@@ -37,6 +38,12 @@ void main() {
     );
     await store.save(custom);
     expect(await store.load(), custom);
+  });
+
+  test('locale round-trips as null (system default) when unset', () async {
+    final store = SettingsStore(file);
+    await store.save(const AppSettings());
+    expect((await store.load()).locale, isNull);
   });
 
   test('a corrupt file falls back to defaults', () async {

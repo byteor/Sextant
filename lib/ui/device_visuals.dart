@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/gen/app_localizations.dart';
 import '../model/device.dart';
 import '../model/discovery_source.dart';
 
@@ -23,22 +24,22 @@ IconData discoverySourceIcon(DiscoverySource source) {
   }
 }
 
-String discoverySourceLabel(DiscoverySource source) {
+String discoverySourceLabel(AppLocalizations l10n, DiscoverySource source) {
   switch (source) {
     case DiscoverySource.tcp:
-      return 'TCP';
+      return l10n.sourceTcp;
     case DiscoverySource.icmp:
-      return 'ICMP';
+      return l10n.sourceIcmp;
     case DiscoverySource.arp:
-      return 'ARP';
+      return l10n.sourceArp;
     case DiscoverySource.mdns:
-      return 'mDNS';
+      return l10n.sourceMdns;
     case DiscoverySource.bonjour:
-      return 'Bonjour';
+      return l10n.sourceBonjour;
     case DiscoverySource.netbios:
-      return 'NetBIOS';
+      return l10n.sourceNetbios;
     case DiscoverySource.ssdp:
-      return 'SSDP';
+      return l10n.sourceSsdp;
   }
 }
 
@@ -76,34 +77,34 @@ IconData deviceTypeIcon(DeviceType type) {
 
 /// A human-readable label for a [DeviceType], shown in tooltips and the
 /// change-type menu.
-String deviceTypeLabel(DeviceType type) {
+String deviceTypeLabel(AppLocalizations l10n, DeviceType type) {
   switch (type) {
     case DeviceType.router:
-      return 'Router';
+      return l10n.typeRouter;
     case DeviceType.computer:
-      return 'Computer';
+      return l10n.typeComputer;
     case DeviceType.laptop:
-      return 'Laptop';
+      return l10n.typeLaptop;
     case DeviceType.phone:
-      return 'Phone';
+      return l10n.typePhone;
     case DeviceType.tablet:
-      return 'Tablet';
+      return l10n.typeTablet;
     case DeviceType.printer:
-      return 'Printer';
+      return l10n.typePrinter;
     case DeviceType.tv:
-      return 'TV';
+      return l10n.typeTv;
     case DeviceType.speaker:
-      return 'Speaker';
+      return l10n.typeSpeaker;
     case DeviceType.camera:
-      return 'Camera';
+      return l10n.typeCamera;
     case DeviceType.nas:
-      return 'NAS';
+      return l10n.typeNas;
     case DeviceType.server:
-      return 'Server';
+      return l10n.typeServer;
     case DeviceType.iot:
-      return 'IoT';
+      return l10n.typeIot;
     case DeviceType.unknown:
-      return 'Unknown';
+      return l10n.typeUnknown;
   }
 }
 

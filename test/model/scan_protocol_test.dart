@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/l10n/gen/app_localizations_en.dart';
 import 'package:sextant/model/scan_protocol.dart';
 
 void main() {
   test('every protocol has a non-empty label', () {
+    final l10n = AppLocalizationsEn();
     for (final p in ScanProtocol.values) {
-      expect(p.label, isNotEmpty);
+      expect(p.label(l10n), isNotEmpty);
     }
   });
 
