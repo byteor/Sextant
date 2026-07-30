@@ -9,40 +9,40 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get settingsTitle => 'Settings';
+  String get settingsTitle => 'Настройки';
 
   @override
   String settingsLoadError(String error) {
-    return 'Could not load settings: $error';
+    return 'Не удалось загрузить настройки: $error';
   }
 
   @override
-  String get sectionAppearance => 'Appearance';
+  String get sectionAppearance => 'Внешний вид';
 
   @override
-  String get appearanceLight => 'Light';
+  String get appearanceLight => 'Светлая';
 
   @override
-  String get appearanceDark => 'Dark';
+  String get appearanceDark => 'Тёмная';
 
   @override
-  String get appearanceAuto => 'Auto';
+  String get appearanceAuto => 'Авто';
 
   @override
-  String get sectionLanguage => 'Language';
+  String get sectionLanguage => 'Язык';
 
   @override
-  String get languageSystemDefault => 'System default';
+  String get languageSystemDefault => 'Системный язык';
 
   @override
-  String get sectionScanning => 'Scanning';
+  String get sectionScanning => 'Сканирование';
 
   @override
-  String get autoRefreshInterval => 'Auto-refresh interval';
+  String get autoRefreshInterval => 'Интервал автообновления';
 
   @override
   String durationSeconds(int seconds) {
-    return '${seconds}s';
+    return '$seconds с';
   }
 
   @override
@@ -50,23 +50,22 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       minutes,
       locale: localeName,
-      other: '$minutes min',
-      one: '$minutes min',
+      other: '$minutes мин',
     );
     return '$_temp0';
   }
 
   @override
-  String get protocolNotAvailable => 'Not available on this platform';
+  String get protocolNotAvailable => 'Недоступно на этой платформе';
 
   @override
-  String get protocolIcmp => 'ICMP ping sweep';
+  String get protocolIcmp => 'ICMP-сканирование (ping)';
 
   @override
-  String get protocolArp => 'ARP table';
+  String get protocolArp => 'Таблица ARP';
 
   @override
-  String get protocolTcp => 'TCP port scan';
+  String get protocolTcp => 'Сканирование TCP-портов';
 
   @override
   String get protocolMdns => 'mDNS / Bonjour';
@@ -78,88 +77,93 @@ class AppLocalizationsRu extends AppLocalizations {
   String get protocolSsdp => 'SSDP / UPnP';
 
   @override
-  String get sectionHistory => 'History';
+  String get sectionHistory => 'История';
 
   @override
-  String get saveScanHistory => 'Save scan history';
+  String get saveScanHistory => 'Сохранять историю сканирований';
 
   @override
-  String get retentionTitle => 'Retention';
+  String get retentionTitle => 'Хранение';
 
   @override
-  String get retentionSubtitle => 'Maximum saved scan snapshots';
+  String get retentionSubtitle => 'Максимум сохранённых снимков сканирования';
 
   @override
-  String get sectionVendorDatabase => 'Vendor database';
+  String get sectionVendorDatabase => 'База производителей';
 
   @override
-  String get vendorDbUpdateTitle => 'Update from the IEEE registry';
+  String get vendorDbUpdateTitle => 'Обновить из реестра IEEE';
 
   @override
-  String get vendorDbUpdateSubtitle => 'Improves MAC-address vendor names';
+  String get vendorDbUpdateSubtitle =>
+      'Улучшает определение производителя по MAC-адресу';
 
   @override
-  String get refreshNow => 'Refresh now';
+  String get refreshNow => 'Обновить сейчас';
 
   @override
-  String get vendorDbAutoRefresh => 'Auto-refresh vendor database';
+  String get vendorDbAutoRefresh => 'Автообновление базы производителей';
 
   @override
-  String get vendorDbAutoRefreshInterval => 'Auto-refresh interval';
+  String get vendorDbAutoRefreshInterval => 'Интервал автообновления';
 
   @override
   String vendorDbIntervalDays(int days) {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: '$days days',
-      one: '$days day',
+      other: '$days дня',
+      many: '$days дней',
+      few: '$days дня',
+      one: '$days день',
     );
     return '$_temp0';
   }
 
   @override
-  String get vendorDbRefreshedSuccess => 'Vendor database refreshed.';
+  String get vendorDbRefreshedSuccess => 'База производителей обновлена.';
 
   @override
   String get vendorDbRefreshFailed =>
-      'Could not refresh vendor database — check your connection.';
+      'Не удалось обновить базу производителей — проверьте подключение.';
 
   @override
-  String get historyTitle => 'Scan History';
+  String get historyTitle => 'История сканирований';
 
   @override
-  String get clearAllHistoryTooltip => 'Clear all history';
+  String get clearAllHistoryTooltip => 'Очистить всю историю';
 
   @override
   String historyLoadError(String error) {
-    return 'Could not load history: $error';
+    return 'Не удалось загрузить историю: $error';
   }
 
   @override
-  String get clearHistoryDialogTitle => 'Clear scan history?';
+  String get clearHistoryDialogTitle => 'Очистить историю сканирований?';
 
   @override
   String get clearHistoryDialogBody =>
-      'This permanently deletes all saved scan snapshots and their change logs. This cannot be undone.';
+      'Это навсегда удалит все сохранённые снимки сканирования и журнал изменений. Это действие нельзя отменить.';
 
   @override
-  String get cancel => 'Cancel';
+  String get cancel => 'Отмена';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'Очистить';
 
   @override
   String get noChangesRecorded =>
-      'No changes recorded yet — this is the baseline.';
+      'Изменений пока не зафиксировано — это исходное состояние.';
 
   @override
   String historyScanCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# scans',
-      one: '# scan',
+      other: '# сканирования',
+      many: '# сканирований',
+      few: '# сканирования',
+      one: '# сканирование',
     );
     return '$_temp0';
   }
@@ -169,53 +173,55 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# devices',
-      one: '# device',
+      other: '# устройства',
+      many: '# устройств',
+      few: '# устройства',
+      one: '# устройство',
     );
     return '$_temp0';
   }
 
   @override
   String historySummaryLine(String scans, String time, String devices) {
-    return '$scans · latest $time · $devices';
+    return '$scans · последнее $time · $devices';
   }
 
   @override
-  String get noScanHistoryYet => 'No scan history yet.';
+  String get noScanHistoryYet => 'История сканирований пуста.';
 
   @override
   String get runScanHint =>
-      'Run a scan or enable monitoring — snapshots are saved automatically.';
+      'Запустите сканирование или включите мониторинг — снимки сохраняются автоматически.';
 
   @override
   String changeAppeared(String ip) {
-    return 'Appeared · $ip';
+    return 'Появилось · $ip';
   }
 
   @override
   String changeDisappeared(String ip) {
-    return 'Disappeared · last at $ip';
+    return 'Исчезло · последний раз на $ip';
   }
 
   @override
   String changeChanged(String fields, String ip) {
-    return 'Changed $fields · $ip';
+    return 'Изменено $fields · $ip';
   }
 
   @override
   String get fieldIp => 'IP';
 
   @override
-  String get fieldHostname => 'hostname';
+  String get fieldHostname => 'имя хоста';
 
   @override
-  String get fieldVendor => 'vendor';
+  String get fieldVendor => 'производитель';
 
   @override
-  String get fieldType => 'type';
+  String get fieldType => 'тип';
 
   @override
-  String get fieldOpenPorts => 'open ports';
+  String get fieldOpenPorts => 'открытые порты';
 
   @override
   String get sourceTcp => 'TCP';
@@ -239,68 +245,70 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sourceSsdp => 'SSDP';
 
   @override
-  String get typeRouter => 'Router';
+  String get typeRouter => 'Роутер';
 
   @override
-  String get typeComputer => 'Computer';
+  String get typeComputer => 'Компьютер';
 
   @override
-  String get typeLaptop => 'Laptop';
+  String get typeLaptop => 'Ноутбук';
 
   @override
-  String get typePhone => 'Phone';
+  String get typePhone => 'Телефон';
 
   @override
-  String get typeTablet => 'Tablet';
+  String get typeTablet => 'Планшет';
 
   @override
-  String get typePrinter => 'Printer';
+  String get typePrinter => 'Принтер';
 
   @override
-  String get typeTv => 'TV';
+  String get typeTv => 'Телевизор';
 
   @override
-  String get typeSpeaker => 'Speaker';
+  String get typeSpeaker => 'Колонка';
 
   @override
-  String get typeCamera => 'Camera';
+  String get typeCamera => 'Камера';
 
   @override
   String get typeNas => 'NAS';
 
   @override
-  String get typeServer => 'Server';
+  String get typeServer => 'Сервер';
 
   @override
   String get typeIot => 'IoT';
 
   @override
-  String get typeUnknown => 'Unknown';
+  String get typeUnknown => 'Неизвестно';
 
   @override
   String get aboutTitle => 'Sextant';
 
   @override
   String get aboutBody =>
-      'A lightweight LAN scanner for discovering and monitoring devices on your local network.';
+      'Лёгкий сканер локальной сети для обнаружения устройств и наблюдения за ними.';
 
   @override
-  String get builtWithFlutter => 'Built with Flutter.';
+  String get builtWithFlutter => 'Создано с использованием Flutter.';
 
   @override
-  String get close => 'Close';
+  String get close => 'Закрыть';
 
   @override
   String get networkChangedSnackbar =>
-      'Network changed — updating available networks…';
+      'Сеть изменилась — обновляем список доступных сетей…';
 
   @override
   String newDeviceCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# new devices',
-      one: '# new device',
+      other: '# новых устройства',
+      many: '# новых устройств',
+      few: '# новых устройства',
+      one: '# новое устройство',
     );
     return '$_temp0';
   }
@@ -312,11 +320,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String newDeviceMore(int count) {
-    return '+$count more';
+    return '+ещё $count';
   }
 
   @override
-  String get noActiveNetworkFound => 'No active network found';
+  String get noActiveNetworkFound => 'Активная сеть не найдена';
 
   @override
   String networkOption(String name, String address, int prefix) {
@@ -324,179 +332,181 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get scanButtonLabel => 'SCAN';
+  String get scanButtonLabel => 'СКАН';
 
   @override
-  String get stopButtonLabel => 'STOP';
+  String get stopButtonLabel => 'СТОП';
 
   @override
-  String get monitoringStopTooltip => 'Stop live monitoring';
+  String get monitoringStopTooltip => 'Остановить мониторинг';
 
   @override
   String get monitoringStartTooltip =>
-      'Live monitoring — re-scan and alert on new devices';
+      'Мониторинг в реальном времени — пересканирование и оповещение о новых устройствах';
 
   @override
-  String get exportScanTooltip => 'Export scan';
+  String get exportScanTooltip => 'Экспорт сканирования';
 
   @override
-  String get exportAsCsv => 'Export as CSV…';
+  String get exportAsCsv => 'Экспорт в CSV…';
 
   @override
-  String get exportAsJson => 'Export as JSON…';
+  String get exportAsJson => 'Экспорт в JSON…';
 
   @override
-  String get scanHistoryTooltip => 'Scan history';
+  String get scanHistoryTooltip => 'История сканирований';
 
   @override
-  String get aboutTooltip => 'About';
+  String get aboutTooltip => 'О программе';
 
   @override
-  String get settingsTooltip => 'Settings';
+  String get settingsTooltip => 'Настройки';
 
   @override
   String exportedDevices(int count, String path) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Exported # devices to $path',
-      one: 'Exported # device to $path',
+      other: 'Экспортировано # устройства в $path',
+      many: 'Экспортировано # устройств в $path',
+      few: 'Экспортировано # устройства в $path',
+      one: 'Экспортировано # устройство в $path',
     );
     return '$_temp0';
   }
 
   @override
   String exportFailed(String error) {
-    return 'Export failed: $error';
+    return 'Ошибка экспорта: $error';
   }
 
   @override
   String scanningStatus(int found, int scanned, int total) {
-    return 'Scanning… $found found, scanned $scanned of $total';
+    return 'Сканирование… найдено $found, просканировано $scanned из $total';
   }
 
   @override
   String resolvingMacAddresses(int found) {
-    return 'Resolving MAC addresses… $found found';
+    return 'Определение MAC-адресов… найдено $found';
   }
 
   @override
   String monitoringStatus(int online, String offlineSuffix) {
-    return 'Monitoring… $online online$offlineSuffix';
+    return 'Мониторинг… $online онлайн$offlineSuffix';
   }
 
   @override
   String onlineStatus(int online, String offlineSuffix) {
-    return '$online online$offlineSuffix';
+    return '$online онлайн$offlineSuffix';
   }
 
   @override
   String offlineSuffix(int count) {
-    return ', $count offline';
+    return ', $count офлайн';
   }
 
   @override
-  String get idleStatus => 'Idle';
+  String get idleStatus => 'Ожидание';
 
   @override
-  String get scanningEllipsis => 'Scanning…';
+  String get scanningEllipsis => 'Сканирование…';
 
   @override
-  String get pressScanHint => 'Press SCAN to discover devices on your network.';
+  String get pressScanHint => 'Нажмите СКАН, чтобы найти устройства в сети.';
 
   @override
-  String get columnIp => 'IP address';
+  String get columnIp => 'IP-адрес';
 
   @override
-  String get columnName => 'Name';
+  String get columnName => 'Имя';
 
   @override
   String get columnMac => 'MAC';
 
   @override
-  String get columnVendor => 'Vendor';
+  String get columnVendor => 'Производитель';
 
   @override
-  String get columnOpenPorts => 'Open ports';
+  String get columnOpenPorts => 'Открытые порты';
 
   @override
-  String get columnFoundVia => 'Found via';
+  String get columnFoundVia => 'Найдено через';
 
   @override
-  String get columnLatency => 'Latency';
+  String get columnLatency => 'Задержка';
 
   @override
   String alsoSeenAt(String ips) {
-    return 'Also seen at: $ips';
+    return 'Также замечено на: $ips';
   }
 
   @override
-  String get discoveredVia => 'Discovered via';
+  String get discoveredVia => 'Обнаружено через';
 
   @override
-  String get openInBrowser => 'Open in browser';
+  String get openInBrowser => 'Открыть в браузере';
 
   @override
-  String get renameEllipsis => 'Rename…';
+  String get renameEllipsis => 'Переименовать…';
 
   @override
-  String get changeTypeEllipsis => 'Change type…';
+  String get changeTypeEllipsis => 'Изменить тип…';
 
   @override
-  String get copyIp => 'Copy IP';
+  String get copyIp => 'Копировать IP';
 
   @override
-  String get copyMac => 'Copy MAC';
+  String get copyMac => 'Копировать MAC';
 
   @override
-  String get wakeOnLan => 'Wake on LAN';
+  String get wakeOnLan => 'Отправить Wake-on-LAN';
 
   @override
   String magicPacketSent(String mac) {
-    return 'Magic packet sent to $mac';
+    return 'Пакет Wake-on-LAN отправлен на $mac';
   }
 
   @override
   String magicPacketFailed(String error) {
-    return 'Could not send magic packet: $error';
+    return 'Не удалось отправить пакет Wake-on-LAN: $error';
   }
 
   @override
   String renameDialogTitle(String ip) {
-    return 'Rename $ip';
+    return 'Переименовать $ip';
   }
 
   @override
-  String get deviceNameLabel => 'Device name';
+  String get deviceNameLabel => 'Имя устройства';
 
   @override
-  String get deviceNameHint => 'e.g. Office Printer';
+  String get deviceNameHint => 'например, Принтер в офисе';
 
   @override
-  String get save => 'Save';
+  String get save => 'Сохранить';
 
   @override
   String deviceTypeDialogTitle(String ip) {
-    return 'Device type · $ip';
+    return 'Тип устройства · $ip';
   }
 
   @override
-  String get resetToAutomatic => 'Reset to automatic';
+  String get resetToAutomatic => 'Сбросить на автоматический';
 
   @override
-  String get statusOnline => 'Online';
+  String get statusOnline => 'Онлайн';
 
   @override
-  String get statusOffline => 'Offline';
+  String get statusOffline => 'Офлайн';
 
   @override
   String deviceTypeOfflineTooltip(String type) {
-    return '$type · offline';
+    return '$type · офлайн';
   }
 
   @override
   String latencySuffix(String ms) {
-    return ' · $ms ms';
+    return ' · $ms мс';
   }
 
   @override

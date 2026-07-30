@@ -20,7 +20,10 @@ void main() {
   // runAsync) *before* any widget pump triggers ref.watch(settingsProvider)
   // for the first time; once build() starts on the fake-async zone, no
   // later runAsync call can rescue that already-pending Future.
-  Future<ProviderContainer> pumpSettings(WidgetTester tester) async {
+  Future<ProviderContainer> pumpSettings(
+    WidgetTester tester, {
+    Locale? locale,
+  }) async {
     // The Settings screen's sections stack taller than the default 800x600
     // test surface; without a taller surface the lazy ListView never builds
     // the lower sections (History, Vendor database), so their widgets can't
@@ -46,6 +49,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: kSupportedLocales,
           home: const SettingsScreen(),
@@ -133,5 +137,15 @@ void main() {
     await pumpSettings(tester);
     expect(find.text('Refresh now'), findsOneWidget);
     expect(find.text('Auto-refresh vendor database'), findsOneWidget);
+  });
+
+  testWidgets('renders in Russian when the app locale is ru', (tester) async {
+    await pumpSettings(tester, locale: const Locale('ru'));
+    expect(find.text('Настройки'), findsOneWidget); // AppBar title
+    expect(find.text('Внешний вид'), findsOneWidget); // Appearance section
+    expect(find.text('Язык'), findsOneWidget); // Language section
+    expect(find.text('Сканирование'), findsOneWidget); // Scanning section
+    expect(find.text('История'), findsOneWidget); // History section
+    expect(find.text('База производителей'), findsOneWidget);
   });
 }
