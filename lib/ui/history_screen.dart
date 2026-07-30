@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/scan_diff.dart';
 import '../data/scan_history.dart';
+import '../l10n/gen/app_localizations.dart';
 import '../state/providers.dart';
 import 'device_visuals.dart';
 
@@ -14,16 +15,17 @@ class HistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(scanHistoryProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan History'),
+        title: Text(l10n.historyTitle),
         actions: [
           historyAsync.maybeWhen(
             data: (groups) => groups.isEmpty
                 ? const SizedBox.shrink()
                 : IconButton(
-                    tooltip: 'Clear all history',
+                    tooltip: l10n.clearAllHistoryTooltip,
                     icon: const Icon(Icons.delete_sweep_outlined),
                     onPressed: () => _confirmClear(context, ref),
                   ),
@@ -33,7 +35,8 @@ class HistoryScreen extends ConsumerWidget {
       ),
       body: historyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load history: $e')),
+        error: (e, _) =>
+            Center(child: Text(l10n.historyLoadError(e.toString()))),
         data: (groups) => groups.isEmpty
             ? const _EmptyHistory()
             : ListView(
@@ -47,22 +50,20 @@ class HistoryScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmClear(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear scan history?'),
-        content: const Text(
-          'This permanently deletes all saved scan snapshots and their change '
-          'logs. This cannot be undone.',
-        ),
+        title: Text(l10n.clearHistoryDialogTitle),
+        content: Text(l10n.clearHistoryDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear'),
+            child: Text(l10n.clear),
           ),
         ],
       ),
@@ -81,6 +82,7 @@ class _NetworkHistorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final entries = changeLog(group.scans);
 
     return Card(
@@ -92,17 +94,19 @@ class _NetworkHistorySection extends StatelessWidget {
         title: Text(group.networkLabel,
             style: theme.textTheme.titleMedium),
         subtitle: Text(
-          '${group.scans.length} scan${group.scans.length == 1 ? '' : 's'} · '
-          'latest ${_formatTime(group.latest.timestamp)} · '
-          '${group.latest.deviceCount} devices',
+          l10n.historySummaryLine(
+            l10n.historyScanCount(group.scans.length),
+            _formatTime(group.latest.timestamp),
+            l10n.historyDeviceCount(group.latest.deviceCount),
+          ),
         ),
         children: [
           if (entries.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text('No changes recorded yet — this is the baseline.'),
+                child: Text(l10n.noChangesRecorded),
               ),
             )
           else
@@ -121,6 +125,7 @@ class _ChangeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final (icon, color) = _kindVisual(entry.kind, theme);
 
     return ListTile(
@@ -139,7 +144,7 @@ class _ChangeTile extends StatelessWidget {
           ),
         ],
       ),
-      subtitle: Text(_describe(entry)),
+      subtitle: Text(_describe(l10n, entry)),
       trailing: Text(
         _formatTime(entry.timestamp),
         style: theme.textTheme.bodySmall
@@ -159,31 +164,32 @@ class _ChangeTile extends StatelessWidget {
     }
   }
 
-  String _describe(ScanChangeEntry entry) {
+  String _describe(AppLocalizations l10n, ScanChangeEntry entry) {
     final ip = entry.device.ip;
     switch (entry.kind) {
       case ScanChangeKind.appeared:
-        return 'Appeared · $ip';
+        return l10n.changeAppeared(ip);
       case ScanChangeKind.disappeared:
-        return 'Disappeared · last at $ip';
+        return l10n.changeDisappeared(ip);
       case ScanChangeKind.changed:
-        final what = entry.fields.map(_fieldLabel).join(', ');
-        return 'Changed $what · $ip';
+        final what =
+            entry.fields.map((f) => _fieldLabel(l10n, f)).join(', ');
+        return l10n.changeChanged(what, ip);
     }
   }
 
-  static String _fieldLabel(DeviceChangeField field) {
+  static String _fieldLabel(AppLocalizations l10n, DeviceChangeField field) {
     switch (field) {
       case DeviceChangeField.ip:
-        return 'IP';
+        return l10n.fieldIp;
       case DeviceChangeField.hostname:
-        return 'hostname';
+        return l10n.fieldHostname;
       case DeviceChangeField.vendor:
-        return 'vendor';
+        return l10n.fieldVendor;
       case DeviceChangeField.deviceType:
-        return 'type';
+        return l10n.fieldType;
       case DeviceChangeField.openPorts:
-        return 'open ports';
+        return l10n.fieldOpenPorts;
     }
   }
 }
@@ -194,6 +200,7 @@ class _EmptyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -201,10 +208,10 @@ class _EmptyHistory extends StatelessWidget {
           Icon(Icons.history,
               size: 48, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: 12),
-          Text('No scan history yet.', style: theme.textTheme.titleMedium),
+          Text(l10n.noScanHistoryYet, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'Run a scan or enable monitoring — snapshots are saved automatically.',
+            l10n.runScanHint,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),

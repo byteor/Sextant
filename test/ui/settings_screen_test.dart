@@ -3,11 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/l10n/gen/app_localizations.dart';
+import 'package:sextant/l10n/gen/app_localizations_en.dart';
+import 'package:sextant/l10n/supported_locales.dart';
 import 'package:sextant/model/scan_protocol.dart';
 import 'package:sextant/state/settings.dart';
 import 'package:sextant/ui/settings_screen.dart';
 
 void main() {
+  final l10n = AppLocalizationsEn();
+
   // settingsProvider's build() (and setThemeMode's persistence write) do
   // real dart:io File/Directory operations. Those must run via
   // tester.runAsync() — flutter_test's fake-async zone never resolves real
@@ -15,7 +20,10 @@ void main() {
   // runAsync) *before* any widget pump triggers ref.watch(settingsProvider)
   // for the first time; once build() starts on the fake-async zone, no
   // later runAsync call can rescue that already-pending Future.
-  Future<ProviderContainer> pumpSettings(WidgetTester tester) async {
+  Future<ProviderContainer> pumpSettings(
+    WidgetTester tester, {
+    Locale? locale,
+  }) async {
     // The Settings screen's sections stack taller than the default 800x600
     // test surface; without a taller surface the lazy ListView never builds
     // the lower sections (History, Vendor database), so their widgets can't
@@ -40,7 +48,12 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: SettingsScreen()),
+        child: MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: kSupportedLocales,
+          home: const SettingsScreen(),
+        ),
       ),
     );
     await tester.pump();
@@ -65,16 +78,69 @@ void main() {
     expect(container.read(settingsProvider).value!.themeMode, ThemeMode.light);
   });
 
+  testWidgets(
+      'shows a language picker with System default and all five languages',
+      (tester) async {
+    await pumpSettings(tester);
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('System default'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButton<Locale?>));
+    await tester.pumpAndSettle();
+    expect(find.text('English'), findsWidgets);
+    expect(find.text('Русский'), findsOneWidget);
+    expect(find.text('Español'), findsOneWidget);
+    expect(find.text('Deutsch'), findsOneWidget);
+    expect(find.text('Français'), findsOneWidget);
+  });
+
+  testWidgets('lists languages alphabetically by native name, below System '
+      'default', (tester) async {
+    await pumpSettings(tester);
+    await tester.tap(find.byType(DropdownButton<Locale?>));
+    await tester.pumpAndSettle();
+
+    // The dropdown's menu items render in build order. The currently
+    // selected item (System default) additionally renders once more inside
+    // the closed-button area, so dedupe consecutive repeats rather than
+    // asserting on the raw widget list.
+    final labels = tester
+        .widgetList<Text>(find.descendant(
+          of: find.byType(DropdownMenuItem<Locale?>),
+          matching: find.byType(Text),
+        ))
+        .map((t) => t.data)
+        .toList();
+    final deduped = [
+      for (var i = 0; i < labels.length; i++)
+        if (i == 0 || labels[i] != labels[i - 1]) labels[i],
+    ];
+
+    expect(
+      deduped,
+      ['System default', 'Deutsch', 'English', 'Español', 'Français', 'Русский'],
+    );
+  });
+
+  testWidgets('selecting a language updates settingsProvider', (tester) async {
+    final container = await pumpSettings(tester);
+    await tester.tap(find.byType(DropdownButton<Locale?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Русский').last);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(container.read(settingsProvider).value!.locale, const Locale('ru'));
+  });
+
   testWidgets('shows a toggle for every scan protocol', (tester) async {
     await pumpSettings(tester);
     for (final p in ScanProtocol.values) {
-      expect(find.text(p.label), findsOneWidget);
+      expect(find.text(p.label(l10n)), findsOneWidget);
     }
   });
 
   testWidgets('disabling a protocol updates settingsProvider', (tester) async {
     final container = await pumpSettings(tester);
-    await tester.tap(find.text(ScanProtocol.mdns.label));
+    await tester.tap(find.text(ScanProtocol.mdns.label(l10n)));
     await tester.pump();
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     expect(
@@ -103,5 +169,25 @@ void main() {
     await pumpSettings(tester);
     expect(find.text('Refresh now'), findsOneWidget);
     expect(find.text('Auto-refresh vendor database'), findsOneWidget);
+  });
+
+  testWidgets('renders in Russian when the app locale is ru', (tester) async {
+    await pumpSettings(tester, locale: const Locale('ru'));
+    expect(find.text('Настройки'), findsOneWidget); // AppBar title
+    expect(find.text('Тема'), findsOneWidget); // Appearance section
+    expect(find.text('Язык'), findsOneWidget); // Language section
+    expect(find.text('Сканирование'), findsOneWidget); // Scanning section
+    expect(find.text('История'), findsOneWidget); // History section
+    expect(find.text('База производителей'), findsOneWidget);
+  });
+
+  testWidgets('renders in French when the app locale is fr', (tester) async {
+    await pumpSettings(tester, locale: const Locale('fr'));
+    expect(find.text('Paramètres'), findsOneWidget); // AppBar title
+    expect(find.text('Thème'), findsOneWidget); // Appearance section
+    expect(find.text('Langue'), findsOneWidget); // Language section
+    expect(find.text('Analyse'), findsOneWidget); // Scanning section
+    expect(find.text('Historique'), findsOneWidget); // History section
+    expect(find.text('Base des fabricants'), findsOneWidget);
   });
 }

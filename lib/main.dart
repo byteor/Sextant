@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'l10n/gen/app_localizations.dart';
+import 'l10n/supported_locales.dart';
 import 'state/providers.dart';
 import 'state/settings.dart';
 import 'ui/scan_screen.dart';
@@ -41,13 +43,16 @@ class SextantApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Falls back to dark (today's fixed look) while settings are loading or
     // if they fail to load, so the very first frame is never broken.
-    final themeMode =
-        ref.watch(settingsProvider).value?.themeMode ?? ThemeMode.dark;
+    final settings = ref.watch(settingsProvider).value;
+    final themeMode = settings?.themeMode ?? ThemeMode.dark;
 
     return MaterialApp(
       title: 'Sextant',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
+      locale: settings?.locale,
+      supportedLocales: kSupportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,

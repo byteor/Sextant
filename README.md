@@ -1,6 +1,6 @@
 <h1><img src="assets/about/about_icon.png" width="128" alt="" valign="middle"> Sextant</h1>
 
-A lightweight LAN scanner for discovering and monitoring devices on your local network. Built with Flutter for macOS, Linux, and Windows.
+A lightweight LAN scanner for discovering and monitoring devices on your local network. Built with Flutter for macOS, Linux, and Windows. Supports [multiple languages](#language)
 
 ## Features
 
@@ -69,6 +69,16 @@ Sextant ships with a bundled snapshot of the IEEE OUI registry for offline MAC-t
 ### Appearance
 
 Supports Light, Dark, and System (follows OS setting) themes.
+
+### Language
+
+Available in **English, Russian, Spanish, German, and French**. Pick a language from Settings, or
+leave it on **System default** to follow the OS locale automatically. The language list is sorted
+alphabetically by each language's own name.
+
+> :warning: All translations except of English are AI generated. Please report any AI slop.
+
+See [Localization](#localization-i18n) section for details
 
 ---
 
@@ -254,6 +264,39 @@ The displayed version has two parts:
 
 - `test.yml` — runs `flutter analyze` and `flutter test` on every push and pull request.
 - `release.yml` — triggers on every merge to `main`; builds macOS, Linux, and Windows in parallel and uploads the resulting artifacts.
+
+### Localization (i18n)
+
+Sextant uses Flutter's built-in localization tooling — `flutter_localizations` + `intl` and the
+`flutter gen-l10n` code generator — rather than a bespoke string-loading system.
+
+- **`lib/l10n/app_en.arb`** is the template: every UI string lives here as a key, in English.
+- **`lib/l10n/app_<code>.arb`** (`ru`, `es`, `de`, `fr`) hold the translations, one file per
+  language. Each message can use full ICU plural syntax (`{count, plural, one{...} other{...}}`);
+  match the plural categories your language's grammar actually needs — e.g. French treats both `0`
+  and `1` as singular, unlike English/Spanish/German/Russian.
+- **`lib/l10n/supported_locales.dart`** (`kSupportedLocales` / `kLocaleNativeNames`) controls which
+  locales a given build actually ships and offers in the Settings language picker. This is
+  deliberately separate from "which `.arb` files exist" — you can add and translate a new language
+  in the repo before switching it on here. The picker sorts languages alphabetically by native
+  name automatically; no manual ordering needed.
+- **`l10n.yaml`** configures the generator (template file, output location, etc.). Regeneration
+  happens automatically on `flutter pub get` / `flutter build` / `flutter run` (`generate: true` in
+  `pubspec.yaml`), or on demand via `flutter gen-l10n`.
+
+**Adding a new language:**
+
+1. Copy `lib/l10n/app_en.arb` to `lib/l10n/app_<code>.arb` and translate every value (leave the
+   `{placeholders}` and ICU plural syntax intact).
+2. Add `Locale('<code>')` and its native display name to `kSupportedLocales` /
+   `kLocaleNativeNames` in `lib/l10n/supported_locales.dart`.
+3. Run `flutter pub get` (or `flutter gen-l10n`) to regenerate `AppLocalizations`.
+
+**Translation-completeness check:** `flutter gen-l10n` prints a warning for every key missing from
+a locale's ARB file relative to the template, every time it regenerates — this is the project's
+translation-coverage check, with no custom script to maintain. A language can be added to the repo
+incomplete (it'll just warn and fall back to English for the missing keys) but shouldn't be added
+to `kSupportedLocales` until it's fully translated.
 
 ### Update the vendor (OUI) database
 

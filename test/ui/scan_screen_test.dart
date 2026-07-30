@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/l10n/gen/app_localizations.dart';
+import 'package:sextant/l10n/supported_locales.dart';
 import 'package:sextant/model/device.dart';
 import 'package:sextant/state/column_widths.dart';
 import 'package:sextant/state/providers.dart';
@@ -66,7 +68,11 @@ Future<void> _pump(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: ScanScreen()),
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: kSupportedLocales,
+        home: const ScanScreen(),
+      ),
     ),
   );
   await tester.pump();

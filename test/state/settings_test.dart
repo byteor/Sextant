@@ -11,12 +11,26 @@ void main() {
   test('AppSettings defaults preserve today\'s hardcoded behavior', () {
     const settings = AppSettings();
     expect(settings.themeMode, ThemeMode.dark);
+    expect(settings.locale, isNull); // null => follow the system locale
     expect(settings.monitorIntervalSeconds, 30);
     expect(settings.enabledProtocols, ScanProtocol.values.toSet());
     expect(settings.historyEnabled, isTrue);
     expect(settings.historyRetention, 500);
     expect(settings.vendorDbAutoRefresh, isTrue);
     expect(settings.vendorDbRefreshIntervalDays, 30);
+  });
+
+  group('AppSettings.copyWith', () {
+    test('omitting locale leaves the existing value untouched', () {
+      const settings = AppSettings(locale: Locale('ru'));
+      expect(settings.copyWith(themeMode: ThemeMode.light).locale,
+          const Locale('ru'));
+    });
+
+    test('passing locale: null explicitly resets to system default', () {
+      const settings = AppSettings(locale: Locale('ru'));
+      expect(settings.copyWith(locale: null).locale, isNull);
+    });
   });
 
   group('settingsProvider', () {
@@ -57,6 +71,25 @@ void main() {
         container.read(settingsProvider).value!.themeMode,
         ThemeMode.light,
       );
+    });
+
+    test('setLocale persists and updates state', () async {
+      await container
+          .read(settingsProvider.notifier)
+          .setLocale(const Locale('ru'));
+
+      expect(
+        container.read(settingsProvider).value!.locale,
+        const Locale('ru'),
+      );
+    });
+
+    test('setLocale(null) resets to the system default', () async {
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.setLocale(const Locale('ru'));
+      await notifier.setLocale(null);
+
+      expect(container.read(settingsProvider).value!.locale, isNull);
     });
   });
 }
