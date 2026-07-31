@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../l10n/gen/app_localizations.dart';
+
 /// The discovery/scan mechanisms [ScanOrchestrator] runs, individually
 /// toggleable from Settings. Distinct from [DiscoverySource]: that enum
 /// labels *how a device was found* after the fact; this one controls *which
@@ -7,13 +9,13 @@ import 'dart:io';
 enum ScanProtocol { icmp, arp, tcp, mdns, netbios, ssdp }
 
 extension ScanProtocolInfo on ScanProtocol {
-  String get label => switch (this) {
-        ScanProtocol.icmp => 'ICMP ping sweep',
-        ScanProtocol.arp => 'ARP table',
-        ScanProtocol.tcp => 'TCP port scan',
-        ScanProtocol.mdns => 'mDNS / Bonjour',
-        ScanProtocol.netbios => 'NetBIOS',
-        ScanProtocol.ssdp => 'SSDP / UPnP',
+  String label(AppLocalizations l10n) => switch (this) {
+        ScanProtocol.icmp => l10n.protocolIcmp,
+        ScanProtocol.arp => l10n.protocolArp,
+        ScanProtocol.tcp => l10n.protocolTcp,
+        ScanProtocol.mdns => l10n.protocolMdns,
+        ScanProtocol.netbios => l10n.protocolNetbios,
+        ScanProtocol.ssdp => l10n.protocolSsdp,
       };
 
   /// Whether this protocol can run at all on the current platform. ICMP and

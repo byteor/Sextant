@@ -1,0 +1,11 @@
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-dir: lib/l10n/gen
+output-class: AppLocalizations
+nullable-getter: false
+# Deliberately left at the default (false): flutter gen-l10n prints a warning
+# for every message missing from a non-template ARB file. That's the build's
+# "translation coverage" check — see lib/l10n/app_ru.arb, which intentionally
+# has no messages yet.
+suppress-warnings: false

@@ -19,11 +19,13 @@ class SettingsStore {
     try {
       final decoded = jsonDecode(await _file.readAsString());
       if (decoded is! Map) return const AppSettings();
+      final localeCode = decoded['locale'] as String?;
       return AppSettings(
         themeMode: ThemeMode.values.firstWhere(
           (m) => m.name == decoded['themeMode'],
           orElse: () => ThemeMode.dark,
         ),
+        locale: localeCode == null ? null : Locale(localeCode),
         monitorIntervalSeconds: decoded['monitorIntervalSeconds'] as int? ?? 30,
         enabledProtocols: {
           for (final name in (decoded['enabledProtocols'] as List? ?? []))
@@ -50,6 +52,7 @@ class SettingsStore {
     await _file.parent.create(recursive: true);
     await _file.writeAsString(jsonEncode({
       'themeMode': settings.themeMode.name,
+      'locale': settings.locale?.languageCode,
       'monitorIntervalSeconds': settings.monitorIntervalSeconds,
       'enabledProtocols': [
         for (final p in settings.enabledProtocols) p.name,

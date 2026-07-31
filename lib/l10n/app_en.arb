@@ -1,0 +1,274 @@
+{
+  "@@locale": "en",
+
+  "settingsTitle": "Settings",
+  "settingsLoadError": "Could not load settings: {error}",
+  "@settingsLoadError": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "sectionAppearance": "Appearance",
+  "appearanceLight": "Light",
+  "appearanceDark": "Dark",
+  "appearanceAuto": "Auto",
+
+  "sectionLanguage": "Language",
+  "languageSystemDefault": "System default",
+
+  "sectionScanning": "Scanning",
+  "autoRefreshInterval": "Auto-refresh interval",
+  "durationSeconds": "{seconds}s",
+  "@durationSeconds": {
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+  "durationMinutes": "{minutes, plural, one{{minutes} min} other{{minutes} min}}",
+  "@durationMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "protocolNotAvailable": "Not available on this platform",
+  "protocolIcmp": "ICMP ping sweep",
+  "protocolArp": "ARP table",
+  "protocolTcp": "TCP port scan",
+  "protocolMdns": "mDNS / Bonjour",
+  "protocolNetbios": "NetBIOS",
+  "protocolSsdp": "SSDP / UPnP",
+
+  "sectionHistory": "History",
+  "saveScanHistory": "Save scan history",
+  "retentionTitle": "Retention",
+  "retentionSubtitle": "Maximum saved scan snapshots",
+
+  "sectionVendorDatabase": "Vendor database",
+  "vendorDbUpdateTitle": "Update from the IEEE registry",
+  "vendorDbUpdateSubtitle": "Improves MAC-address vendor names",
+  "refreshNow": "Refresh now",
+  "vendorDbAutoRefresh": "Auto-refresh vendor database",
+  "vendorDbAutoRefreshInterval": "Auto-refresh interval",
+  "vendorDbIntervalDays": "{days, plural, one{{days} day} other{{days} days}}",
+  "@vendorDbIntervalDays": {
+    "placeholders": { "days": { "type": "int" } }
+  },
+  "vendorDbRefreshedSuccess": "Vendor database refreshed.",
+  "vendorDbRefreshFailed": "Could not refresh vendor database — check your connection.",
+
+  "historyTitle": "Scan History",
+  "clearAllHistoryTooltip": "Clear all history",
+  "historyLoadError": "Could not load history: {error}",
+  "@historyLoadError": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "clearHistoryDialogTitle": "Clear scan history?",
+  "clearHistoryDialogBody": "This permanently deletes all saved scan snapshots and their change logs. This cannot be undone.",
+  "cancel": "Cancel",
+  "clear": "Clear",
+  "noChangesRecorded": "No changes recorded yet — this is the baseline.",
+  "historyScanCount": "{count, plural, one{# scan} other{# scans}}",
+  "@historyScanCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "historyDeviceCount": "{count, plural, one{# device} other{# devices}}",
+  "@historyDeviceCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "historySummaryLine": "{scans} · latest {time} · {devices}",
+  "@historySummaryLine": {
+    "placeholders": {
+      "scans": { "type": "String" },
+      "time": { "type": "String" },
+      "devices": { "type": "String" }
+    }
+  },
+  "noScanHistoryYet": "No scan history yet.",
+  "runScanHint": "Run a scan or enable monitoring — snapshots are saved automatically.",
+  "changeAppeared": "Appeared · {ip}",
+  "@changeAppeared": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "changeDisappeared": "Disappeared · last at {ip}",
+  "@changeDisappeared": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "changeChanged": "Changed {fields} · {ip}",
+  "@changeChanged": {
+    "placeholders": {
+      "fields": { "type": "String" },
+      "ip": { "type": "String" }
+    }
+  },
+  "fieldIp": "IP",
+  "fieldHostname": "hostname",
+  "fieldVendor": "vendor",
+  "fieldType": "type",
+  "fieldOpenPorts": "open ports",
+
+  "sourceTcp": "TCP",
+  "sourceIcmp": "ICMP",
+  "sourceArp": "ARP",
+  "sourceMdns": "mDNS",
+  "sourceBonjour": "Bonjour",
+  "sourceNetbios": "NetBIOS",
+  "sourceSsdp": "SSDP",
+
+  "typeRouter": "Router",
+  "typeComputer": "Computer",
+  "typeLaptop": "Laptop",
+  "typePhone": "Phone",
+  "typeTablet": "Tablet",
+  "typePrinter": "Printer",
+  "typeTv": "TV",
+  "typeSpeaker": "Speaker",
+  "typeCamera": "Camera",
+  "typeNas": "NAS",
+  "typeServer": "Server",
+  "typeIot": "IoT",
+  "typeUnknown": "Unknown",
+
+  "aboutTitle": "Sextant",
+  "aboutBody": "A lightweight LAN scanner for discovering and monitoring devices on your local network.",
+  "builtWithFlutter": "Built with Flutter.",
+  "close": "Close",
+
+  "networkChangedSnackbar": "Network changed — updating available networks…",
+  "newDeviceCount": "{count, plural, one{# new device} other{# new devices}}",
+  "@newDeviceCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "newDeviceAlert": "{countLabel}: {names}",
+  "@newDeviceAlert": {
+    "placeholders": {
+      "countLabel": { "type": "String" },
+      "names": { "type": "String" }
+    }
+  },
+  "newDeviceMore": "+{count} more",
+  "@newDeviceMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "noActiveNetworkFound": "No active network found",
+  "networkOption": "{name}  ({address}/{prefix})",
+  "@networkOption": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "address": { "type": "String" },
+      "prefix": { "type": "int" }
+    }
+  },
+  "scanButtonLabel": "SCAN",
+  "stopButtonLabel": "STOP",
+  "monitoringStopTooltip": "Stop live monitoring",
+  "monitoringStartTooltip": "Live monitoring — re-scan and alert on new devices",
+  "exportScanTooltip": "Export scan",
+  "exportAsCsv": "Export as CSV…",
+  "exportAsJson": "Export as JSON…",
+  "scanHistoryTooltip": "Scan history",
+  "aboutTooltip": "About",
+  "settingsTooltip": "Settings",
+
+  "exportedDevices": "{count, plural, one{Exported # device to {path}} other{Exported # devices to {path}}}",
+  "@exportedDevices": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "path": { "type": "String" }
+    }
+  },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "scanningStatus": "Scanning… {found} found, scanned {scanned} of {total}",
+  "@scanningStatus": {
+    "placeholders": {
+      "found": { "type": "int" },
+      "scanned": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "resolvingMacAddresses": "Resolving MAC addresses… {found} found",
+  "@resolvingMacAddresses": {
+    "placeholders": { "found": { "type": "int" } }
+  },
+  "monitoringStatus": "Monitoring… {online} online{offlineSuffix}",
+  "@monitoringStatus": {
+    "placeholders": {
+      "online": { "type": "int" },
+      "offlineSuffix": { "type": "String" }
+    }
+  },
+  "onlineStatus": "{online} online{offlineSuffix}",
+  "@onlineStatus": {
+    "placeholders": {
+      "online": { "type": "int" },
+      "offlineSuffix": { "type": "String" }
+    }
+  },
+  "offlineSuffix": ", {count} offline",
+  "@offlineSuffix": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "idleStatus": "Idle",
+  "scanningEllipsis": "Scanning…",
+  "pressScanHint": "Press SCAN to discover devices on your network.",
+
+  "columnIp": "IP address",
+  "columnName": "Name",
+  "columnMac": "MAC",
+  "columnVendor": "Vendor",
+  "columnOpenPorts": "Open ports",
+  "columnFoundVia": "Found via",
+  "columnLatency": "Latency",
+
+  "alsoSeenAt": "Also seen at: {ips}",
+  "@alsoSeenAt": {
+    "placeholders": { "ips": { "type": "String" } }
+  },
+  "discoveredVia": "Discovered via",
+  "openInBrowser": "Open in browser",
+  "renameEllipsis": "Rename…",
+  "changeTypeEllipsis": "Change type…",
+  "copyIp": "Copy IP",
+  "copyMac": "Copy MAC",
+  "wakeOnLan": "Wake on LAN",
+  "magicPacketSent": "Magic packet sent to {mac}",
+  "@magicPacketSent": {
+    "placeholders": { "mac": { "type": "String" } }
+  },
+  "magicPacketFailed": "Could not send magic packet: {error}",
+  "@magicPacketFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "renameDialogTitle": "Rename {ip}",
+  "@renameDialogTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deviceNameLabel": "Device name",
+  "deviceNameHint": "e.g. Office Printer",
+  "save": "Save",
+  "deviceTypeDialogTitle": "Device type · {ip}",
+  "@deviceTypeDialogTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "resetToAutomatic": "Reset to automatic",
+  "statusOnline": "Online",
+  "statusOffline": "Offline",
+  "deviceTypeOfflineTooltip": "{type} · offline",
+  "@deviceTypeOfflineTooltip": {
+    "placeholders": { "type": { "type": "String" } }
+  },
+  "latencySuffix": " · {ms} ms",
+  "@latencySuffix": {
+    "placeholders": { "ms": { "type": "String" } }
+  },
+  "portWithLabel": "{port} · {label}",
+  "@portWithLabel": {
+    "placeholders": {
+      "port": { "type": "int" },
+      "label": { "type": "String" }
+    }
+  },
+  "portService": "→ {service}",
+  "@portService": {
+    "placeholders": { "service": { "type": "String" } }
+  }
+}
