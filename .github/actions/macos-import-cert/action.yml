@@ -1,0 +1,60 @@
+name: Import macOS signing certificate
+description: >
+  Imports the Apple Development certificate and the WWDR G3 intermediate CA
+  into a temporary keychain so codesign can sign the build. Outputs the
+  keychain path so the caller can delete it once the build is done.
+
+inputs:
+  certificate:
+    description: Base64-encoded .p12 export of the signing certificate
+    required: true
+  certificate-pwd:
+    description: Password used when exporting the .p12
+    required: true
+  keychain-pwd:
+    description: Any random string; used only for this temporary keychain
+    required: true
+
+outputs:
+  keychain-path:
+    description: Path to the temporary keychain, for cleanup
+    value: ${{ steps.import.outputs.keychain-path }}
+
+runs:
+  using: composite
+  steps:
+    - id: import
+      shell: bash
+      env:
+        MACOS_CERTIFICATE: ${{ inputs.certificate }}
+        MACOS_CERTIFICATE_PWD: ${{ inputs.certificate-pwd }}
+        MACOS_KEYCHAIN_PWD: ${{ inputs.keychain-pwd }}
+      run: |
+        if [ -z "$MACOS_CERTIFICATE" ] || [ -z "$MACOS_CERTIFICATE_PWD" ] || [ -z "$MACOS_KEYCHAIN_PWD" ]; then
+          echo "::error::One or more required secrets (MACOS_CERTIFICATE, MACOS_CERTIFICATE_PWD, MACOS_KEYCHAIN_PWD) are missing or empty. Check Settings > Secrets and variables > Actions." >&2
+          exit 1
+        fi
+
+        CERT_PATH=$RUNNER_TEMP/cert.p12
+        WWDR_PATH=$RUNNER_TEMP/wwdr.cer
+        KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+
+        echo -n "$MACOS_CERTIFICATE" | base64 --decode -o "$CERT_PATH"
+        curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+             -o "$WWDR_PATH"
+
+        security create-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
+        security import "$WWDR_PATH" -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+        security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
+          -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+
+        # Allow codesign to use the private key without an interactive prompt.
+        security set-key-partition-list \
+          -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+        echo "keychain-path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"

@@ -235,7 +235,11 @@ flutter pub run msix:create
 
 This produces an MSIX installer that can be sideloaded or submitted to the Microsoft Store. For sideloading, enable Developer Mode in Windows Settings or sign the package with a trusted code-signing certificate.
 
-Alternatively, create a traditional setup wizard with [Inno Setup](https://jrsoftware.org/isinfo.php) by pointing its source directory at `build/windows/x64/runner/Release/`.
+Alternatively, use the checked-in [Inno Setup](https://jrsoftware.org/isinfo.php) script at [windows/installer.iss](windows/installer.iss), which packages `build/windows/x64/runner/Release/` into a traditional setup wizard (this is what CI builds for releases):
+
+```bash
+iscc windows\installer.iss /DMyAppVersion=1.19.0
+```
 
 ---
 
@@ -250,10 +254,13 @@ The displayed version has two parts:
 
 **To cut a release:** increment `kAppVersionMinor` in [lib/version.dart](lib/version.dart) and merge to `main`. The CI workflow computes the build number automatically from the commit history.
 
+**To publish installers:** after merging the version bump, publish a GitHub Release with a tag matching `v<major>.<minor>` (e.g. `v1.19`, or `v1.19.0`) — this triggers `installers.yml`, which builds the signed macOS DMG, a Windows Inno Setup installer, and a Linux `.deb`, and attaches them to the release. The workflow fails fast if the tag doesn't match `lib/version.dart`.
+
 **CI workflows** (`.github/workflows/`):
 
 - `test.yml` — runs `flutter analyze` and `flutter test` on every push and pull request.
-- `release.yml` — triggers on every merge to `main`; builds macOS, Linux, and Windows in parallel and uploads the resulting artifacts.
+- `release.yml` — triggers on every merge to `main`; builds macOS, Linux, and Windows in parallel and uploads the resulting artifacts (quick smoke-test builds, not installers).
+- `installers.yml` — triggers when a GitHub Release is published; builds and attaches the macOS DMG, Windows installer, and Linux `.deb` to that release.
 
 ### Update the vendor (OUI) database
 
