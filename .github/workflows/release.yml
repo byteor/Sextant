@@ -9,6 +9,7 @@ jobs:
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    environment: build
 
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +34,11 @@ jobs:
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           MACOS_KEYCHAIN_PWD:    ${{ secrets.MACOS_KEYCHAIN_PWD }}
         run: |
+          if [ -z "$MACOS_CERTIFICATE" ] || [ -z "$MACOS_CERTIFICATE_PWD" ] || [ -z "$MACOS_KEYCHAIN_PWD" ]; then
+            echo "::error::One or more required secrets (MACOS_CERTIFICATE, MACOS_CERTIFICATE_PWD, MACOS_KEYCHAIN_PWD) are missing or empty. Check Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+
           CERT_PATH=$RUNNER_TEMP/cert.p12
           WWDR_PATH=$RUNNER_TEMP/wwdr.cer
           KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
