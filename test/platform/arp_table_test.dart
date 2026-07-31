@@ -36,5 +36,30 @@ void main() {
 
       expect(table['10.0.0.1'], '00:1a:2b:3c:4d:5e');
     });
+
+    test('extracts ip -> normalized MAC from Windows "arp -a" output', () {
+      const output = '''
+Interface: 192.168.1.5 --- 0x9
+  Internet Address      Physical Address      Type
+  192.168.1.1           00-14-22-01-23-45     dynamic
+  192.168.1.42           a4-83-e7-2b-0c-09     dynamic
+''';
+
+      final table = parseArpOutput(output);
+
+      expect(table['192.168.1.1'], '00:14:22:01:23:45');
+      expect(table['192.168.1.42'], 'a4:83:e7:2b:0c:09');
+      expect(table.containsKey('192.168.1.5'), isFalse);
+    });
+  });
+
+  group('buildArpArgs', () {
+    test('uses -a on Windows (arp.exe has no -n support)', () {
+      expect(buildArpArgs(isWindows: true), ['-a']);
+    });
+
+    test('uses -an on macOS/Linux', () {
+      expect(buildArpArgs(isWindows: false), ['-an']);
+    });
   });
 }
