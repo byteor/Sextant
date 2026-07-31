@@ -15,7 +15,7 @@ jobs:
     environment: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -84,7 +84,7 @@ jobs:
         run: security delete-keychain "${{ steps.import-cert.outputs.keychain-path }}"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: Sextant-*.dmg
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -160,7 +160,7 @@ jobs:
           dpkg-deb --build sextant_pkg "sextant_${VERSION}_amd64.deb"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: sextant_*_amd64.deb
@@ -171,7 +171,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -221,7 +221,7 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "windows\installer.iss" "/DMyAppVersion=$Version"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: dist/Sextant-Setup-*.exe

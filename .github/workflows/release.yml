@@ -12,7 +12,7 @@ jobs:
     environment: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # required for git rev-list --count
 
@@ -70,7 +70,7 @@ jobs:
         run: security delete-keychain "${{ steps.import-cert.outputs.keychain-path }}"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sextant-macos
           path: Sextant-*.dmg
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -117,7 +117,7 @@ jobs:
             -C build/linux/x64/release/ bundle
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sextant-linux
           path: sextant-linux-x64.tar.gz
@@ -129,7 +129,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -155,7 +155,7 @@ jobs:
             --dart-define="BUILD_NUMBER=$BuildNum"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sextant-windows
           path: build/windows/x64/runner/Release/
