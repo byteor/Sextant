@@ -43,6 +43,13 @@ runs:
         curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
              -o "$WWDR_PATH"
 
+        # Compare this against a local `shasum -a 256 cert.p12` to check
+        # whether the file CI actually decodes matches the one verified
+        # locally with `openssl pkcs12 -info` (rules out corruption in the
+        # base64/GitHub-secret round trip vs. a problem with the file itself).
+        echo "cert.p12 sha256 (as decoded by CI): $(shasum -a 256 "$CERT_PATH" | awk '{print $1}')"
+        echo "cert.p12 size (bytes): $(wc -c < "$CERT_PATH" | tr -d ' ')"
+
         security create-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
         # Emitted as soon as the keychain exists, so cleanup can find and
         # delete it even if a later step in this script fails.
