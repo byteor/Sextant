@@ -43,7 +43,7 @@ jobs:
         run: |
           MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
           MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
-          BUILD_NAME="$MAJOR.$MINOR"
+          BUILD_NAME="$MAJOR.$MINOR.0"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build macos --release \
             --build-name="$BUILD_NAME" \
@@ -104,7 +104,7 @@ jobs:
         run: |
           MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
           MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
-          BUILD_NAME="$MAJOR.$MINOR"
+          BUILD_NAME="$MAJOR.$MINOR.0"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build linux --release \
             --build-name="$BUILD_NAME" \
@@ -147,7 +147,7 @@ jobs:
         run: |
           $Major    = (Select-String 'kAppVersionMajor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
           $Minor    = (Select-String 'kAppVersionMinor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
-          $BuildName = "$Major.$Minor"
+          $BuildName = "$Major.$Minor.0"
           $BuildNum  = git rev-list --count HEAD
           flutter build windows --release `
             --build-name="$BuildName" `
