@@ -15,7 +15,7 @@ jobs:
     environment: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -57,7 +57,7 @@ jobs:
         run: |
           MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
           MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
-          BUILD_NAME="$MAJOR.$MINOR"
+          BUILD_NAME="$MAJOR.$MINOR.0"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build macos --release \
             --build-name="$BUILD_NAME" \
@@ -84,7 +84,7 @@ jobs:
         run: security delete-keychain "${{ steps.import-cert.outputs.keychain-path }}"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: Sextant-*.dmg
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -131,7 +131,7 @@ jobs:
         run: |
           MAJOR=$(grep 'kAppVersionMajor' lib/version.dart | grep -oE '[0-9]+')
           MINOR=$(grep 'kAppVersionMinor' lib/version.dart | grep -oE '[0-9]+')
-          BUILD_NAME="$MAJOR.$MINOR"
+          BUILD_NAME="$MAJOR.$MINOR.0"
           BUILD_NUM=$(git rev-list --count HEAD)
           flutter build linux --release \
             --build-name="$BUILD_NAME" \
@@ -160,7 +160,7 @@ jobs:
           dpkg-deb --build sextant_pkg "sextant_${VERSION}_amd64.deb"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: sextant_*_amd64.deb
@@ -171,7 +171,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -201,7 +201,7 @@ jobs:
         run: |
           $Major    = (Select-String 'kAppVersionMajor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
           $Minor    = (Select-String 'kAppVersionMinor = (\d+)' lib/version.dart).Matches[0].Groups[1].Value
-          $BuildName = "$Major.$Minor"
+          $BuildName = "$Major.$Minor.0"
           $BuildNum  = git rev-list --count HEAD
           flutter build windows --release `
             --build-name="$BuildName" `
@@ -216,12 +216,13 @@ jobs:
           $Version = "$Major.$Minor"
 
           magick icon_256.png -define icon:auto-resize=256,128,64,48,32,16 windows\installer.ico
+          if ($LASTEXITCODE -ne 0) { throw "magick failed to generate windows\installer.ico (exit $LASTEXITCODE)" }
 
           choco install innosetup -y --no-progress
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "windows\installer.iss" "/DMyAppVersion=$Version"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: dist/Sextant-Setup-*.exe
