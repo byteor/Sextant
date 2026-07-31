@@ -1,6 +1,6 @@
 // Major and minor are bumped manually at release time.
 const kAppVersionMajor = 1;
-const kAppVersionMinor = 19;
+const kAppVersionMinor = 20;
 
 // Build number baked in at compile time via --dart-define=BUILD_NUMBER=N.
 // CI sets this to the total git commit count (git rev-list --count HEAD),
