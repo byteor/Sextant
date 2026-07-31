@@ -62,6 +62,15 @@ runs:
         # isn't searchable yet.
         security list-keychain -d user -s "$KEYCHAIN_PATH"
 
+        # Diagnostic + primer: querying identities forces the Security
+        # framework to (re)build its identity index for this keychain, which
+        # set-key-partition-list's internal lookup otherwise sometimes misses
+        # even after list-keychain, leading to the same SecItemCopyMatching
+        # error. The output also confirms the .p12 import actually produced a
+        # usable identity (cert + private key), which fails silently otherwise.
+        echo "Identities found in $KEYCHAIN_PATH:"
+        security find-identity -v "$KEYCHAIN_PATH"
+
         # Allow codesign to use the private key without an interactive prompt.
         security set-key-partition-list \
           -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
