@@ -9,6 +9,7 @@ jobs:
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    environment: build
 
     steps:
       - uses: actions/checkout@v4
@@ -21,39 +22,19 @@ jobs:
           channel: stable
           cache: true
 
-      # Import the Apple Development certificate and the WWDR G3 intermediate
+      # Imports the Apple Development certificate and the WWDR G3 intermediate
       # CA into a temporary keychain so codesign can sign the build.
       # Requires three repository secrets:
       #   MACOS_CERTIFICATE     – base64-encoded .p12 export of the cert
       #   MACOS_CERTIFICATE_PWD – password used when exporting the .p12
       #   MACOS_KEYCHAIN_PWD    – any random string; used only for this keychain
       - name: Import signing certificate
-        env:
-          MACOS_CERTIFICATE:     ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          MACOS_KEYCHAIN_PWD:    ${{ secrets.MACOS_KEYCHAIN_PWD }}
-        run: |
-          CERT_PATH=$RUNNER_TEMP/cert.p12
-          WWDR_PATH=$RUNNER_TEMP/wwdr.cer
-          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
-
-          echo -n "$MACOS_CERTIFICATE" | base64 --decode -o "$CERT_PATH"
-          curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
-               -o "$WWDR_PATH"
-
-          security create-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
-
-          security import "$WWDR_PATH" -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
-          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
-            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
-
-          # Allow codesign to use the private key without an interactive prompt.
-          security set-key-partition-list \
-            -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
-
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
+        id: import-cert
+        uses: ./.github/actions/macos-import-cert
+        with:
+          certificate:     ${{ secrets.MACOS_CERTIFICATE }}
+          certificate-pwd: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          keychain-pwd:    ${{ secrets.MACOS_KEYCHAIN_PWD }}
 
       - name: Install dependencies
         run: flutter pub get
@@ -86,7 +67,7 @@ jobs:
 
       - name: Clean up keychain
         if: always()
-        run: security delete-keychain $RUNNER_TEMP/signing.keychain-db
+        run: security delete-keychain "${{ steps.import-cert.outputs.keychain-path }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
