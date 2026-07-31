@@ -44,6 +44,10 @@ runs:
              -o "$WWDR_PATH"
 
         security create-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+        # Emitted as soon as the keychain exists, so cleanup can find and
+        # delete it even if a later step in this script fails.
+        echo "keychain-path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"
+
         security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
         security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
 
@@ -51,10 +55,13 @@ runs:
         security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
           -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
 
+        # Add the new keychain to the user's keychain search list *before*
+        # set-key-partition-list: that command looks up the imported identity
+        # via the search list, and fails with "SecItemCopyMatching: The
+        # specified item could not be found in the keychain" if the keychain
+        # isn't searchable yet.
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+
         # Allow codesign to use the private key without an interactive prompt.
         security set-key-partition-list \
           -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
-
-        security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-        echo "keychain-path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"
