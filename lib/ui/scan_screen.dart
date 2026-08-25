@@ -51,8 +51,10 @@ class ScanScreen extends ConsumerWidget {
 
     // Live-monitoring alert: when a re-scan finds devices that weren't there
     // before, surface them.
-    ref.listen(scanControllerProvider.select((s) => s.lastNewDevices),
-        (prev, next) {
+    ref.listen(scanControllerProvider.select((s) => s.lastNewDevices), (
+      prev,
+      next,
+    ) {
       if (next.isEmpty) return;
       final names = next.map((d) => d.displayName).take(3).join(', ');
       final countLabel = l10n.newDeviceCount(next.length);
@@ -120,8 +122,8 @@ class ScanScreen extends ConsumerWidget {
                       // finish and only background enrichment remains.
                       ? (scan.scanProgress < 1.0 ? scan.scanProgress : null)
                       : (scan.backgroundTotal > 0
-                          ? scan.backgroundProgress
-                          : null),
+                            ? scan.backgroundProgress
+                            : null),
                 ),
               )
             : null,
@@ -130,25 +132,8 @@ class ScanScreen extends ConsumerWidget {
         children: [
           _StatusBar(),
           const Divider(height: 1),
-          const _DeviceTableHeader(),
-          const Divider(height: 1),
           Expanded(
-            child: scan.devices.isEmpty
-                ? Center(
-                    child: Text(
-                      scan.isBusy
-                          ? l10n.scanningEllipsis
-                          : l10n.pressScanHint,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: scan.devices.length,
-                    itemBuilder: (context, i) => DeviceRow(
-                      device: scan.devices[i],
-                      tinted: i.isOdd,
-                    ),
-                  ),
+            child: _DeviceTable(devices: scan.devices, isBusy: scan.isBusy),
           ),
         ],
       ),
@@ -188,20 +173,20 @@ class _Toolbar extends ConsumerWidget {
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      Text(l10n.networkOption(
-                        n.displayName,
-                        n.subnet.networkAddress.address,
-                        n.subnet.prefixLength,
-                      )),
+                      Text(
+                        l10n.networkOption(
+                          n.displayName,
+                          n.subnet.networkAddress.address,
+                          n.subnet.prefixLength,
+                        ),
+                      ),
                     ],
                   ),
                 ),
             ],
             onChanged: scan.isBusy
                 ? null
-                : (n) => ref
-                    .read(selectedNetworkProvider.notifier)
-                    .select(n),
+                : (n) => ref.read(selectedNetworkProvider.notifier).select(n),
           ),
         const SizedBox(width: 16),
         if (scan.isBusy)
@@ -216,8 +201,8 @@ class _Toolbar extends ConsumerWidget {
             onPressed: effective == null
                 ? null
                 : () => ref
-                    .read(scanControllerProvider.notifier)
-                    .startScan(effective),
+                      .read(scanControllerProvider.notifier)
+                      .startScan(effective),
             icon: const Icon(Icons.radar),
             label: Text(l10n.scanButtonLabel),
           ),
@@ -232,8 +217,8 @@ class _Toolbar extends ConsumerWidget {
           onPressed: effective == null
               ? null
               : () => ref
-                  .read(scanControllerProvider.notifier)
-                  .toggleMonitoring(effective),
+                    .read(scanControllerProvider.notifier)
+                    .toggleMonitoring(effective),
         ),
         const SizedBox(width: 8),
         PopupMenuButton<ExportFormat>(
@@ -257,9 +242,7 @@ class _Toolbar extends ConsumerWidget {
           tooltip: l10n.scanHistoryTooltip,
           icon: const Icon(Icons.history),
           onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const HistoryScreen(),
-            ),
+            MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
           ),
         ),
         const Spacer(),
@@ -272,9 +255,7 @@ class _Toolbar extends ConsumerWidget {
           tooltip: l10n.settingsTooltip,
           icon: const Icon(Icons.settings_outlined),
           onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const SettingsScreen(),
-            ),
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
           ),
         ),
       ],
@@ -309,7 +290,8 @@ Future<void> exportScan(
     );
   } catch (e) {
     messenger.showSnackBar(
-        SnackBar(content: Text(l10n.exportFailed(e.toString()))));
+      SnackBar(content: Text(l10n.exportFailed(e.toString()))),
+    );
   }
 }
 
@@ -327,7 +309,10 @@ class _StatusBar extends ConsumerWidget {
     final String status;
     if (scan.isScanning) {
       status = l10n.scanningStatus(
-          scan.devices.length, scan.scanned, scan.total);
+        scan.devices.length,
+        scan.scanned,
+        scan.total,
+      );
     } else if (scan.enriching) {
       status = l10n.resolvingMacAddresses(scan.devices.length);
     } else if (scan.isMonitoring) {
@@ -342,8 +327,11 @@ class _StatusBar extends ConsumerWidget {
       child: Row(
         children: [
           if (scan.isMonitoring) ...[
-            Icon(Icons.sensors,
-                size: 14, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.sensors,
+              size: 14,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 6),
           ],
           Text(status, style: style),
@@ -361,6 +349,114 @@ const _kIconWidth = 40.0;
 /// file's class docs above `_DeviceTableHeader`.
 const _kHandleWidth = 8.0;
 
+/// Fixed chrome around the table's seven text columns: the icon column, a
+/// resize-handle gap after each of the six resizable columns, and the
+/// header/row `Padding`'s combined left+right inset (12 each side).
+const _kTableChromeWidth = _kIconWidth + 6 * _kHandleWidth + 24;
+
+/// The header row's text style — shared between measuring each column's
+/// minimum width and actually painting the labels, so the two never drift
+/// out of sync.
+TextStyle? _headerStyle(BuildContext context) => Theme.of(
+  context,
+).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold);
+
+/// Measures the on-screen width of each column's header label in the current
+/// locale/font — the floor [EffectiveColumnWidths.compute] shrinks columns
+/// down to, so a header label is never clipped.
+ColumnMinWidths _headerMinWidths(
+  BuildContext context,
+  AppLocalizations l10n,
+  TextStyle? style,
+) {
+  final textScaler = MediaQuery.textScalerOf(context);
+  final direction = Directionality.of(context);
+  double measure(String label) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: style),
+      maxLines: 1,
+      textDirection: direction,
+      textScaler: textScaler,
+    )..layout();
+    return painter.width.ceilToDouble();
+  }
+
+  return (
+    ip: measure(l10n.columnIp),
+    name: measure(l10n.columnName),
+    mac: measure(l10n.columnMac),
+    vendor: measure(l10n.columnVendor),
+    openPorts: measure(l10n.columnOpenPorts),
+    foundVia: measure(l10n.columnFoundVia),
+    latency: measure(l10n.columnLatency),
+  );
+}
+
+/// The device table: header, a divider, and the device list (or an empty-
+/// state hint), all fitted to the space actually available this frame.
+///
+/// Column widths shrink to fit a narrower window before anything overflows
+/// — see [EffectiveColumnWidths]. Once every column is already at its
+/// header-label minimum and the row still doesn't fit, this switches to
+/// horizontal scrolling rather than clipping or overlapping content.
+class _DeviceTable extends ConsumerWidget {
+  const _DeviceTable({required this.devices, required this.isBusy});
+
+  final List<Device> devices;
+  final bool isBusy;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final preferred = ref.watch(columnWidthsProvider);
+    final style = _headerStyle(context);
+    final minWidths = _headerMinWidths(context, l10n, style);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final widths = EffectiveColumnWidths.compute(
+          preferred: preferred,
+          minWidths: minWidths,
+          availableWidth: constraints.maxWidth - _kTableChromeWidth,
+        );
+
+        final body = devices.isEmpty
+            ? Center(
+                child: Text(
+                  isBusy ? l10n.scanningEllipsis : l10n.pressScanHint,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              )
+            : ListView.builder(
+                itemCount: devices.length,
+                itemBuilder: (context, i) => DeviceRow(
+                  widths: widths,
+                  device: devices[i],
+                  tinted: i.isOdd,
+                ),
+              );
+
+        final table = Column(
+          children: [
+            _DeviceTableHeader(widths: widths),
+            const Divider(height: 1),
+            Expanded(child: body),
+          ],
+        );
+
+        if (!widths.overflows) return table;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: widths.naturalWidth + _kTableChromeWidth,
+            child: table,
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// The device table's column headers. A [ConsumerWidget] (not
 /// [StatelessWidget], like the rest of this file's static widgets) because it
 /// both reads [columnWidthsProvider] for current widths and renders the
@@ -370,16 +466,14 @@ const _kHandleWidth = 8.0;
 /// in [DeviceRow]'s row, in the same relative position, or the two rows will
 /// drift out of alignment — see [_kHandleWidth]'s doc comment.
 class _DeviceTableHeader extends ConsumerWidget {
-  const _DeviceTableHeader();
+  const _DeviceTableHeader({required this.widths});
+
+  final EffectiveColumnWidths widths;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final widths = ref.watch(columnWidthsProvider);
     final l10n = AppLocalizations.of(context);
-    final style = Theme.of(context)
-        .textTheme
-        .labelMedium
-        ?.copyWith(fontWeight: FontWeight.bold);
+    final style = _headerStyle(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       // IntrinsicHeight so the resize handles (whose own content is a
@@ -390,26 +484,39 @@ class _DeviceTableHeader extends ConsumerWidget {
         child: Row(
           children: [
             const SizedBox(width: _kIconWidth),
-            SizedBox(width: widths.ip, child: _headerLabel(l10n.columnIp, style)),
+            SizedBox(
+              width: widths.ip,
+              child: _headerLabel(l10n.columnIp, style),
+            ),
             const _ColumnResizeHandle(column: ResizableColumn.ip),
             SizedBox(
-                width: widths.name, child: _headerLabel(l10n.columnName, style)),
+              width: widths.name,
+              child: _headerLabel(l10n.columnName, style),
+            ),
             const _ColumnResizeHandle(column: ResizableColumn.name),
             SizedBox(
-                width: widths.mac, child: _headerLabel(l10n.columnMac, style)),
+              width: widths.mac,
+              child: _headerLabel(l10n.columnMac, style),
+            ),
             const _ColumnResizeHandle(column: ResizableColumn.mac),
             SizedBox(
-                width: widths.vendor,
-                child: _headerLabel(l10n.columnVendor, style)),
+              width: widths.vendor,
+              child: _headerLabel(l10n.columnVendor, style),
+            ),
             const _ColumnResizeHandle(column: ResizableColumn.vendor),
-            Expanded(child: _headerLabel(l10n.columnOpenPorts, style)),
             SizedBox(
-                width: widths.foundVia,
-                child: _headerLabel(l10n.columnFoundVia, style)),
+              width: widths.openPorts,
+              child: _headerLabel(l10n.columnOpenPorts, style),
+            ),
+            SizedBox(
+              width: widths.foundVia,
+              child: _headerLabel(l10n.columnFoundVia, style),
+            ),
             const _ColumnResizeHandle(column: ResizableColumn.foundVia),
             SizedBox(
-                width: widths.latency,
-                child: _headerLabel(l10n.columnLatency, style)),
+              width: widths.latency,
+              child: _headerLabel(l10n.columnLatency, style),
+            ),
             const _ColumnResizeHandle(column: ResizableColumn.latency),
           ],
         ),
@@ -432,12 +539,8 @@ String? latestLatencyLabel(List<double> values) {
 /// narrower than its text — a header label wrapping to multiple lines would
 /// (via this row's `IntrinsicHeight`) inflate every column to match, instead
 /// of just truncating the one label that's too narrow.
-Text _headerLabel(String label, TextStyle? style) => Text(
-      label,
-      style: style,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
+Text _headerLabel(String label, TextStyle? style) =>
+    Text(label, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
 
 /// A thin draggable strip after a resizable column's header cell: dragging it
 /// horizontally grows or shrinks that column via [columnWidthsProvider].
@@ -460,10 +563,7 @@ class _ColumnResizeHandle extends ConsumerWidget {
               .read(columnWidthsProvider.notifier)
               .resize(column, details.delta.dx),
           child: Center(
-            child: Container(
-              width: 1,
-              color: Theme.of(context).dividerColor,
-            ),
+            child: Container(width: 1, color: Theme.of(context).dividerColor),
           ),
         ),
       ),
@@ -472,8 +572,14 @@ class _ColumnResizeHandle extends ConsumerWidget {
 }
 
 class DeviceRow extends ConsumerWidget {
-  const DeviceRow({super.key, required this.device, this.tinted = false});
+  const DeviceRow({
+    super.key,
+    required this.widths,
+    required this.device,
+    this.tinted = false,
+  });
 
+  final EffectiveColumnWidths widths;
   final Device device;
 
   /// Whether this row gets the alternating (zebra) background tint.
@@ -495,7 +601,6 @@ class DeviceRow extends ConsumerWidget {
       hostname: device.hostname,
       openPorts: device.openPorts,
     );
-    final widths = ref.watch(columnWidthsProvider);
 
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -506,13 +611,17 @@ class DeviceRow extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _StatusDot(online: device.isOnline, latencyMs: device.latencyMs),
+                _StatusDot(
+                  online: device.isOnline,
+                  latencyMs: device.latencyMs,
+                ),
                 const SizedBox(width: 6),
                 Tooltip(
                   message: device.isOnline
                       ? deviceTypeLabel(l10n, device.deviceType)
                       : l10n.deviceTypeOfflineTooltip(
-                          deviceTypeLabel(l10n, device.deviceType)),
+                          deviceTypeLabel(l10n, device.deviceType),
+                        ),
                   child: Icon(
                     deviceIcon(device),
                     size: 20,
@@ -538,13 +647,14 @@ class DeviceRow extends ConsumerWidget {
                 ),
                 if (device.additionalIps.isNotEmpty)
                   Tooltip(
-                    message:
-                        l10n.alsoSeenAt(device.additionalIps.join(', ')),
+                    message: l10n.alsoSeenAt(device.additionalIps.join(', ')),
                     child: Padding(
                       padding: const EdgeInsets.only(left: 4),
                       child: Text(
                         '+${device.additionalIps.length}',
-                        style: mutedSmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: mutedSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -590,7 +700,8 @@ class DeviceRow extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: _kHandleWidth),
-          Expanded(
+          SizedBox(
+            width: widths.openPorts,
             child: Wrap(
               spacing: 4,
               runSpacing: 2,
@@ -620,7 +731,9 @@ class DeviceRow extends ConsumerWidget {
           const SizedBox(width: _kHandleWidth),
           SizedBox(
             width: widths.latency,
-            child: ref.watch(latencyHistoryProvider(identity)).maybeWhen(
+            child: ref
+                .watch(latencyHistoryProvider(identity))
+                .maybeWhen(
                   data: (values) {
                     final label = latestLatencyLabel(values);
                     if (label == null) return const SizedBox.shrink();
@@ -657,11 +770,10 @@ class DeviceRow extends ConsumerWidget {
     Offset? globalPosition,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = globalPosition ?? overlay.size.center(Offset.zero);
-    final canOpenWeb = device.openPorts.contains(80) ||
-        device.openPorts.contains(443);
+    final canOpenWeb =
+        device.openPorts.contains(80) || device.openPorts.contains(443);
 
     final selected = await showMenu<String>(
       context: context,
@@ -679,8 +791,10 @@ class DeviceRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l10n.discoveredVia,
-                    style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  l10n.discoveredVia,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
                 const SizedBox(height: 4),
                 for (final source in device.discoveredBy)
                   Padding(
@@ -818,10 +932,9 @@ class DeviceRow extends ConsumerWidget {
       ),
     );
     if (name == null) return; // cancelled
-    await ref.read(scanControllerProvider.notifier).renameDevice(
-          device,
-          name.isEmpty ? null : name,
-        );
+    await ref
+        .read(scanControllerProvider.notifier)
+        .renameDevice(device, name.isEmpty ? null : name);
   }
 
   Future<void> _changeTypeDialog(BuildContext context, WidgetRef ref) async {
@@ -886,7 +999,8 @@ class _StatusDot extends StatelessWidget {
     final latency = latencyMs == null
         ? ''
         : l10n.latencySuffix(
-            latencyMs! < 1 ? '<1' : latencyMs!.toStringAsFixed(0));
+            latencyMs! < 1 ? '<1' : latencyMs!.toStringAsFixed(0),
+          );
     return Tooltip(
       message: (online ? l10n.statusOnline : l10n.statusOffline) + latency,
       child: Container(
@@ -920,9 +1034,7 @@ class _PortChip extends StatelessWidget {
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: known
-            ? scheme.primaryContainer
-            : scheme.surfaceContainerHighest,
+        color: known ? scheme.primaryContainer : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text('$port', style: Theme.of(context).textTheme.labelSmall),
