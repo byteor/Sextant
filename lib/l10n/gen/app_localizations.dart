@@ -668,6 +668,66 @@ abstract class AppLocalizations {
   /// **'No new devices yet.'**
   String get noNewDevicesYet;
 
+  /// No description provided for @deepScanMenuItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan all ports (65,535)…'**
+  String get deepScanMenuItem;
+
+  /// No description provided for @deepScanConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan all 65,535 ports on {ip}?'**
+  String deepScanConfirmTitle(String ip);
+
+  /// No description provided for @deepScanConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This can take several minutes and generates significant network traffic to the device.'**
+  String get deepScanConfirmBody;
+
+  /// No description provided for @deepScanConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get deepScanConfirmButton;
+
+  /// No description provided for @deepScanBusyTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for the current scan to finish first'**
+  String get deepScanBusyTooltip;
+
+  /// No description provided for @deepScanOfflineTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Device is offline'**
+  String get deepScanOfflineTooltip;
+
+  /// No description provided for @deepScanStatusLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep-scanning {ip} — {done} / {total}'**
+  String deepScanStatusLine(String ip, int done, int total);
+
+  /// No description provided for @deepScanOpenPortCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} open port} other{{count} open ports}}'**
+  String deepScanOpenPortCount(int count);
+
+  /// No description provided for @deepScanComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep scan of {ip} complete: {countLabel} found ({ports})'**
+  String deepScanComplete(String ip, String countLabel, String ports);
+
+  /// No description provided for @deepScanCompleteNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep scan of {ip} complete — no additional open ports found.'**
+  String deepScanCompleteNone(String ip);
+
   /// No description provided for @aboutTooltip.
   ///
   /// In en, this message translates to:

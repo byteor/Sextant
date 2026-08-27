@@ -366,6 +366,56 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noNewDevicesYet => 'Пока нет новых устройств.';
 
   @override
+  String get deepScanMenuItem => 'Сканировать все порты (65535)…';
+
+  @override
+  String deepScanConfirmTitle(String ip) {
+    return 'Сканировать все 65535 портов $ip?';
+  }
+
+  @override
+  String get deepScanConfirmBody =>
+      'Это может занять несколько минут и создать значительную сетевую нагрузку на устройство.';
+
+  @override
+  String get deepScanConfirmButton => 'Сканировать';
+
+  @override
+  String get deepScanBusyTooltip =>
+      'Дождитесь завершения текущего сканирования';
+
+  @override
+  String get deepScanOfflineTooltip => 'Устройство не в сети';
+
+  @override
+  String deepScanStatusLine(String ip, int done, int total) {
+    return 'Глубокое сканирование $ip — $done / $total';
+  }
+
+  @override
+  String deepScanOpenPortCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count открытых порта',
+      many: '$count открытых портов',
+      few: '$count открытых порта',
+      one: '$count открытый порт',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deepScanComplete(String ip, String countLabel, String ports) {
+    return 'Глубокое сканирование $ip завершено: найдено $countLabel ($ports)';
+  }
+
+  @override
+  String deepScanCompleteNone(String ip) {
+    return 'Глубокое сканирование $ip завершено — дополнительные открытые порты не найдены.';
+  }
+
+  @override
   String get aboutTooltip => 'О программе';
 
   @override

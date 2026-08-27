@@ -101,5 +101,31 @@ void main() {
       expect(maxActive, greaterThan(0));
       expect(maxActive, lessThanOrEqualTo(4));
     });
+
+    test('reports progress after every individual port probe, not just per '
+        'host', () async {
+      final scanner = TcpHostScanner(
+        probe: (host, port) async => false,
+        concurrency: 4,
+      );
+      final progress = <int>[];
+      int? totalSeen;
+
+      await scanner
+          .scan(
+            [InternetAddress.loopbackIPv4],
+            [80, 443, 8080, 8443],
+            onProbeComplete: (done, total) {
+              progress.add(done);
+              totalSeen = total;
+            },
+          )
+          .drain<void>();
+
+      expect(totalSeen, 4);
+      // One callback per probe, monotonically increasing to the port count —
+      // regardless of completion order, each call gets the next integer up.
+      expect(progress, [1, 2, 3, 4]);
+    });
   });
 }

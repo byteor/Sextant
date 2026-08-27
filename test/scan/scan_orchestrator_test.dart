@@ -67,6 +67,7 @@ class _TrackingTcpHostScanner extends TcpHostScanner {
     List<InternetAddress> hosts,
     List<int> ports, {
     HostProgress? onHostComplete,
+    HostProgress? onProbeComplete,
     bool Function()? isCancelled,
   }) {
     called = true;
