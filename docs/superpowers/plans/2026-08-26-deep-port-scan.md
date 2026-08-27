@@ -374,7 +374,7 @@ void main() {
     });
 
     test('result is sorted ascending', () {
-      final merged = mergedScanPorts([3, 70000 - 1]);
+      final merged = mergedScanPorts([3, 65535]);
 
       expect(merged, orderedEquals(merged.toList()..sort()));
     });
