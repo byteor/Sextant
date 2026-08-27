@@ -48,10 +48,11 @@ class TcpHostScanner {
     List<InternetAddress> hosts,
     List<int> ports, {
     HostProgress? onHostComplete,
+    HostProgress? onProbeComplete,
     bool Function()? isCancelled,
   }) {
     final controller = StreamController<HostScanResult>();
-    unawaited(_drive(hosts, ports, controller, onHostComplete, isCancelled));
+    unawaited(_drive(hosts, ports, controller, onHostComplete, onProbeComplete, isCancelled));
     return controller.stream;
   }
 
@@ -60,6 +61,7 @@ class TcpHostScanner {
     List<int> ports,
     StreamController<HostScanResult> controller,
     HostProgress? onHostComplete,
+    HostProgress? onProbeComplete,
     bool Function()? isCancelled,
   ) async {
     if (hosts.isEmpty || ports.isEmpty) {
@@ -79,6 +81,7 @@ class TcpHostScanner {
 
     var next = 0;
     var completedHosts = 0;
+    var completedProbes = 0;
     Future<void> worker() async {
       while (true) {
         if (isCancelled?.call() ?? false) break;
@@ -87,6 +90,7 @@ class TcpHostScanner {
         final task = tasks[i];
         final open = await _runProbe(hosts[task.hostIndex], task.port);
         if (open) openByHost[task.hostIndex].add(task.port);
+        onProbeComplete?.call(++completedProbes, tasks.length);
         if (--remaining[task.hostIndex] == 0) {
           final found = openByHost[task.hostIndex]..sort();
           if (found.isNotEmpty && !(isCancelled?.call() ?? false)) {
