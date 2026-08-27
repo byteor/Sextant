@@ -27,7 +27,9 @@ import '../model/network_info.dart';
 import '../model/scan_protocol.dart';
 import '../platform/network_discovery.dart';
 import '../platform/network_monitor.dart';
+import '../scan/deep_port_scanner.dart';
 import '../scan/scan_orchestrator.dart';
+import '../scan/well_known_ports.dart';
 import 'column_widths.dart';
 import 'scan_state.dart';
 import 'settings.dart';
@@ -234,6 +236,9 @@ class ScanController extends Notifier<ScanState> {
   Completer<void>? _scanCompleter;
   bool _scanWasStopped = false;
 
+  // Deep (all-port) single-device scan cancellation.
+  bool _deepScanCancelled = false;
+
   /// Live-monitoring state: when [_monitoring] is on, the network is re-scanned
   /// every configured refresh interval (see [_scheduleNextTick]) and each pass
   /// is diffed against the previous to surface newly-appeared devices.
@@ -248,11 +253,14 @@ class ScanController extends Notifier<ScanState> {
 
   /// Builds a [ScanOrchestrator] with each scan phase enabled per the user's
   /// current settings, falling back to all-enabled (prior behavior) until
-  /// settings have loaded.
-  ScanOrchestrator _buildOrchestrator() {
+  /// settings have loaded. The TCP phase's port list is the default list
+  /// plus every port ever found via a deep scan on any device (see
+  /// [mergedScanPorts]), so those keep showing as open on every future scan.
+  Future<ScanOrchestrator> _buildOrchestrator() async {
     final enabled =
         ref.read(settingsProvider).value?.enabledProtocols ??
         ScanProtocol.values.toSet();
+    final extraPorts = await ref.read(historyDatabaseProvider).allExtraPorts();
     return ScanOrchestrator(
       icmpEnabled: enabled.contains(ScanProtocol.icmp),
       arpEnabled: enabled.contains(ScanProtocol.arp),
@@ -260,6 +268,7 @@ class ScanController extends Notifier<ScanState> {
       mdnsEnabled: enabled.contains(ScanProtocol.mdns),
       netbiosEnabled: enabled.contains(ScanProtocol.netbios),
       ssdpEnabled: enabled.contains(ScanProtocol.ssdp),
+      ports: mergedScanPorts(extraPorts),
     );
   }
 
@@ -275,7 +284,7 @@ class ScanController extends Notifier<ScanState> {
   }
 
   Future<void> startScan(ScanNetwork network) async {
-    if (state.isScanning) return;
+    if (state.isScanning || state.isDeepScanning) return;
     await _sub?.cancel();
     _byIp.clear();
     _probed = 0;
@@ -294,7 +303,7 @@ class ScanController extends Notifier<ScanState> {
       isMonitoring: _monitoring,
     );
 
-    final orchestrator = _buildOrchestrator();
+    final orchestrator = await _buildOrchestrator();
     _orchestrator = orchestrator;
     final completer = Completer<void>();
     _scanCompleter = completer;
@@ -348,6 +357,64 @@ class ScanController extends Notifier<ScanState> {
     _emit(isScanning: false);
   }
 
+  /// Scans every TCP port (1–65,535) on [device]'s current IP. Returns the
+  /// sorted list of open ports found (already merged into the live device
+  /// and persisted), or null if the scan was cancelled, or if it couldn't
+  /// start because a regular scan, a monitoring tick, or another deep scan
+  /// is already running — only one of those three may run at a time, since
+  /// all three mutate the live device list.
+  Future<List<int>?> startDeepPortScan(
+    Device device,
+    ScanNetwork network,
+  ) async {
+    if (state.isScanning ||
+        state.isBackgroundScanning ||
+        state.isDeepScanning) {
+      return null;
+    }
+    final identity = _identityOf(device);
+    _deepScanCancelled = false;
+    state = state.copyWith(
+      isDeepScanning: true,
+      deepScanDeviceIdentity: identity,
+      deepScanIp: device.ip,
+      deepScanCompleted: 0,
+      deepScanTotal: kAllTcpPorts.length,
+    );
+
+    final found = await DeepPortScanner().scan(
+      InternetAddress(device.ip),
+      onProgress: (done, total) {
+        state = state.copyWith(deepScanCompleted: done, deepScanTotal: total);
+      },
+      isCancelled: () => _deepScanCancelled,
+    );
+    final cancelled = _deepScanCancelled;
+    state = state.copyWith(isDeepScanning: false);
+    if (cancelled) return null;
+
+    if (found.isNotEmpty) {
+      final db = ref.read(historyDatabaseProvider);
+      await db.recordDeepScanPorts(identity, network.id, found);
+
+      final current = _byIp[device.ip];
+      if (current != null) {
+        _byIp[device.ip] = current.copyWith(
+          openPorts: (<int>{...current.openPorts, ...found}.toList()..sort()),
+        );
+        _emit();
+        await _saveHistory(network, _byIp.values.toList());
+      }
+    }
+    return found;
+  }
+
+  /// Cancels the in-flight deep port scan, if any. Nothing is persisted and
+  /// [startDeepPortScan] returns null for a cancelled scan.
+  void cancelDeepPortScan() {
+    _deepScanCancelled = true;
+  }
+
   /// Turns live monitoring on or off. On enable, if the list is empty it runs a
   /// visible baseline scan to populate it; thereafter it re-scans every
   /// configured refresh interval. Each periodic re-scan runs *entirely in the
@@ -397,6 +464,12 @@ class ScanController extends Notifier<ScanState> {
 
   Future<void> _monitorTick() async {
     if (!_monitoring || _monitorNetwork == null) return;
+    if (state.isDeepScanning) {
+      // Defer this tick rather than race the deep scan for _byIp — retry on
+      // the next scheduled tick once it's finished.
+      _scheduleNextTick();
+      return;
+    }
     final found = await _backgroundScan(_monitorNetwork!);
     if (!_monitoring) return; // toggled off mid-scan; discard
     await _recordLatency(_monitorNetwork!, found);
@@ -415,7 +488,7 @@ class ScanController extends Notifier<ScanState> {
     final store = await ref.read(renameStoreProvider.future);
     final typeStore = await ref.read(typeOverrideStoreProvider.future);
     final byIp = <String, Device>{};
-    final orchestrator = _buildOrchestrator();
+    final orchestrator = await _buildOrchestrator();
     _monitorOrchestrator = orchestrator;
     final completer = Completer<void>();
     _monitorCompleter = completer;
