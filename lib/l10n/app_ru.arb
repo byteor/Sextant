@@ -115,6 +115,30 @@
   "deepScanConfirmButton": "Сканировать",
   "deepScanBusyTooltip": "Дождитесь завершения текущего сканирования",
   "deepScanOfflineTooltip": "Устройство не в сети",
+  "deepScanStatusLine": "Глубокое сканирование {ip} — {done} / {total}",
+  "@deepScanStatusLine": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "deepScanOpenPortCount": "{count, plural, one{# открытый порт} few{# открытых порта} many{# открытых портов} other{# открытых порта}}",
+  "@deepScanOpenPortCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "deepScanComplete": "Глубокое сканирование {ip} завершено: найдено {countLabel} ({ports})",
+  "@deepScanComplete": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "countLabel": { "type": "String" },
+      "ports": { "type": "String" }
+    }
+  },
+  "deepScanCompleteNone": "Глубокое сканирование {ip} завершено — дополнительные открытые порты не найдены.",
+  "@deepScanCompleteNone": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
   "aboutTooltip": "О программе",
   "settingsTooltip": "Настройки",
 

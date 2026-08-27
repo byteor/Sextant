@@ -704,6 +704,30 @@ abstract class AppLocalizations {
   /// **'Device is offline'**
   String get deepScanOfflineTooltip;
 
+  /// No description provided for @deepScanStatusLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep-scanning {ip} — {done} / {total}'**
+  String deepScanStatusLine(String ip, int done, int total);
+
+  /// No description provided for @deepScanOpenPortCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{# open port} other{# open ports}}'**
+  String deepScanOpenPortCount(int count);
+
+  /// No description provided for @deepScanComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep scan of {ip} complete: {countLabel} found ({ports})'**
+  String deepScanComplete(String ip, String countLabel, String ports);
+
+  /// No description provided for @deepScanCompleteNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep scan of {ip} complete — no additional open ports found.'**
+  String deepScanCompleteNone(String ip);
+
   /// No description provided for @aboutTooltip.
   ///
   /// In en, this message translates to:

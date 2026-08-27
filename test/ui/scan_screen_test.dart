@@ -41,6 +41,16 @@ class _SpyScanController extends _FixedScanController {
   }
 }
 
+class _SpyCancelScanController extends _FixedScanController {
+  _SpyCancelScanController(super.state);
+  bool cancelled = false;
+
+  @override
+  void cancelDeepPortScan() {
+    cancelled = true;
+  }
+}
+
 Device _dev(String ip, {String? mac}) {
   final t = DateTime.utc(2026, 1, 1);
   return Device(ip: ip, mac: mac, firstSeen: t, lastSeen: t);
@@ -493,6 +503,108 @@ void main() {
       final spy =
           container.read(scanControllerProvider.notifier) as _SpyScanController;
       expect(spy.startedDevice, isNull);
+    });
+  });
+
+  group('deep scan progress display', () {
+    testWidgets('the deep-scanned device\'s row shows a progress ring '
+        'instead of its status dot', (tester) async {
+      final device = _dev('10.0.0.8', mac: 'dd:dd:dd:dd:dd:dd');
+      final identity = deviceIdentity(mac: device.mac);
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: identity,
+          deepScanIp: device.ip,
+          deepScanCompleted: 100,
+          deepScanTotal: 65535,
+        ),
+      );
+
+      expect(
+        find.descendant(
+          of: find.byType(DeviceRow),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the status bar shows deep-scan progress and a cancel '
+        'button while running', (tester) async {
+      final device = _dev('10.0.0.8', mac: 'dd:dd:dd:dd:dd:dd');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: '10.0.0.8',
+          deepScanCompleted: 100,
+          deepScanTotal: 65535,
+        ),
+      );
+
+      expect(find.text('Deep-scanning 10.0.0.8 — 100 / 65535'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    testWidgets('the status bar shows no deep-scan line when not deep '
+        'scanning', (tester) async {
+      await _pump(tester, []);
+
+      expect(find.textContaining('Deep-scanning'), findsNothing);
+    });
+
+    testWidgets('tapping Cancel in the status bar calls cancelDeepPortScan', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.8', mac: 'dd:dd:dd:dd:dd:dd');
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyCancelScanController(
+              ScanState(
+                devices: [device],
+                isDeepScanning: true,
+                deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+                deepScanIp: device.ip,
+                deepScanCompleted: 10,
+                deepScanTotal: 65535,
+              ),
+            ),
+          ),
+          networksProvider.overrideWith((ref) async => []),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Cancel'));
+
+      final spy =
+          container.read(scanControllerProvider.notifier)
+              as _SpyCancelScanController;
+      expect(spy.cancelled, isTrue);
     });
   });
 }

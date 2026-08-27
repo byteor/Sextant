@@ -379,6 +379,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deepScanOfflineTooltip => 'Device is offline';
 
   @override
+  String deepScanStatusLine(String ip, int done, int total) {
+    return 'Deep-scanning $ip — $done / $total';
+  }
+
+  @override
+  String deepScanOpenPortCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# open ports',
+      one: '# open port',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deepScanComplete(String ip, String countLabel, String ports) {
+    return 'Deep scan of $ip complete: $countLabel found ($ports)';
+  }
+
+  @override
+  String deepScanCompleteNone(String ip) {
+    return 'Deep scan of $ip complete — no additional open ports found.';
+  }
+
+  @override
   String get aboutTooltip => 'About';
 
   @override

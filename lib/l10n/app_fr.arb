@@ -115,6 +115,30 @@
   "deepScanConfirmButton": "Analyser",
   "deepScanBusyTooltip": "Attendez la fin de l'analyse en cours",
   "deepScanOfflineTooltip": "L'appareil est hors ligne",
+  "deepScanStatusLine": "Analyse approfondie de {ip} — {done} / {total}",
+  "@deepScanStatusLine": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "deepScanOpenPortCount": "{count, plural, one{# port ouvert} other{# ports ouverts}}",
+  "@deepScanOpenPortCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "deepScanComplete": "Analyse approfondie de {ip} terminée : {countLabel} trouvé(s) ({ports})",
+  "@deepScanComplete": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "countLabel": { "type": "String" },
+      "ports": { "type": "String" }
+    }
+  },
+  "deepScanCompleteNone": "Analyse approfondie de {ip} terminée — aucun port ouvert supplémentaire trouvé.",
+  "@deepScanCompleteNone": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
   "aboutTooltip": "À propos",
   "settingsTooltip": "Paramètres",
 

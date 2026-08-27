@@ -115,6 +115,30 @@
   "deepScanConfirmButton": "Scannen",
   "deepScanBusyTooltip": "Bitte warten, bis der aktuelle Scan abgeschlossen ist",
   "deepScanOfflineTooltip": "Gerät ist offline",
+  "deepScanStatusLine": "Tiefenscan von {ip} — {done} / {total}",
+  "@deepScanStatusLine": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "deepScanOpenPortCount": "{count, plural, one{# offener Port} other{# offene Ports}}",
+  "@deepScanOpenPortCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "deepScanComplete": "Tiefenscan von {ip} abgeschlossen: {countLabel} gefunden ({ports})",
+  "@deepScanComplete": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "countLabel": { "type": "String" },
+      "ports": { "type": "String" }
+    }
+  },
+  "deepScanCompleteNone": "Tiefenscan von {ip} abgeschlossen — keine weiteren offenen Ports gefunden.",
+  "@deepScanCompleteNone": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
   "aboutTooltip": "Info",
   "settingsTooltip": "Einstellungen",
 

@@ -115,6 +115,30 @@
   "deepScanConfirmButton": "Escanear",
   "deepScanBusyTooltip": "Espera a que termine el análisis actual",
   "deepScanOfflineTooltip": "El dispositivo está fuera de línea",
+  "deepScanStatusLine": "Análisis profundo de {ip} — {done} / {total}",
+  "@deepScanStatusLine": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "deepScanOpenPortCount": "{count, plural, one{# puerto abierto} other{# puertos abiertos}}",
+  "@deepScanOpenPortCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "deepScanComplete": "Análisis profundo de {ip} completado: {countLabel} encontrado(s) ({ports})",
+  "@deepScanComplete": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "countLabel": { "type": "String" },
+      "ports": { "type": "String" }
+    }
+  },
+  "deepScanCompleteNone": "Análisis profundo de {ip} completado — no se encontraron puertos abiertos adicionales.",
+  "@deepScanCompleteNone": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
   "aboutTooltip": "Acerca de",
   "settingsTooltip": "Configuración",
 

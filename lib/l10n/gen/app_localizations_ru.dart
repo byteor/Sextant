@@ -388,6 +388,34 @@ class AppLocalizationsRu extends AppLocalizations {
   String get deepScanOfflineTooltip => 'Устройство не в сети';
 
   @override
+  String deepScanStatusLine(String ip, int done, int total) {
+    return 'Глубокое сканирование $ip — $done / $total';
+  }
+
+  @override
+  String deepScanOpenPortCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# открытых порта',
+      many: '# открытых портов',
+      few: '# открытых порта',
+      one: '# открытый порт',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deepScanComplete(String ip, String countLabel, String ports) {
+    return 'Глубокое сканирование $ip завершено: найдено $countLabel ($ports)';
+  }
+
+  @override
+  String deepScanCompleteNone(String ip) {
+    return 'Глубокое сканирование $ip завершено — дополнительные открытые порты не найдены.';
+  }
+
+  @override
   String get aboutTooltip => 'О программе';
 
   @override
