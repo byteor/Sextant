@@ -366,6 +366,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noNewDevicesYet => 'Пока нет новых устройств.';
 
   @override
+  String get deepScanMenuItem => 'Сканировать все порты (65535)…';
+
+  @override
+  String deepScanConfirmTitle(String ip) {
+    return 'Сканировать все 65535 портов $ip?';
+  }
+
+  @override
+  String get deepScanConfirmBody =>
+      'Это может занять несколько минут и создать значительную сетевую нагрузку на устройство.';
+
+  @override
+  String get deepScanConfirmButton => 'Сканировать';
+
+  @override
+  String get deepScanBusyTooltip =>
+      'Дождитесь завершения текущего сканирования';
+
+  @override
+  String get deepScanOfflineTooltip => 'Устройство не в сети';
+
+  @override
   String get aboutTooltip => 'О программе';
 
   @override

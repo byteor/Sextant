@@ -106,6 +106,15 @@
   "newDevicesTooltip": "Nouveaux appareils",
   "newDevicesDialogTitle": "Nouveaux appareils",
   "noNewDevicesYet": "Aucun nouvel appareil pour l'instant.",
+  "deepScanMenuItem": "Analyser tous les ports (65 535)…",
+  "deepScanConfirmTitle": "Analyser les 65 535 ports de {ip} ?",
+  "@deepScanConfirmTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deepScanConfirmBody": "Cela peut prendre plusieurs minutes et génère un trafic réseau important vers l'appareil.",
+  "deepScanConfirmButton": "Analyser",
+  "deepScanBusyTooltip": "Attendez la fin de l'analyse en cours",
+  "deepScanOfflineTooltip": "L'appareil est hors ligne",
   "aboutTooltip": "À propos",
   "settingsTooltip": "Paramètres",
 

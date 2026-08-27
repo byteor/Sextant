@@ -668,6 +668,42 @@ abstract class AppLocalizations {
   /// **'No new devices yet.'**
   String get noNewDevicesYet;
 
+  /// No description provided for @deepScanMenuItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan all ports (65,535)…'**
+  String get deepScanMenuItem;
+
+  /// No description provided for @deepScanConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan all 65,535 ports on {ip}?'**
+  String deepScanConfirmTitle(String ip);
+
+  /// No description provided for @deepScanConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This can take several minutes and generates significant network traffic to the device.'**
+  String get deepScanConfirmBody;
+
+  /// No description provided for @deepScanConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get deepScanConfirmButton;
+
+  /// No description provided for @deepScanBusyTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for the current scan to finish first'**
+  String get deepScanBusyTooltip;
+
+  /// No description provided for @deepScanOfflineTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Device is offline'**
+  String get deepScanOfflineTooltip;
+
   /// No description provided for @aboutTooltip.
   ///
   /// In en, this message translates to:

@@ -106,6 +106,15 @@
   "newDevicesTooltip": "Dispositivos nuevos",
   "newDevicesDialogTitle": "Dispositivos nuevos",
   "noNewDevicesYet": "Aún no hay dispositivos nuevos.",
+  "deepScanMenuItem": "Escanear todos los puertos (65.535)…",
+  "deepScanConfirmTitle": "¿Escanear los 65.535 puertos de {ip}?",
+  "@deepScanConfirmTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deepScanConfirmBody": "Esto puede tardar varios minutos y genera tráfico de red significativo hacia el dispositivo.",
+  "deepScanConfirmButton": "Escanear",
+  "deepScanBusyTooltip": "Espera a que termine el análisis actual",
+  "deepScanOfflineTooltip": "El dispositivo está fuera de línea",
   "aboutTooltip": "Acerca de",
   "settingsTooltip": "Configuración",
 

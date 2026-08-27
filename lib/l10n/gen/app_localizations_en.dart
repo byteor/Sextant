@@ -358,6 +358,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noNewDevicesYet => 'No new devices yet.';
 
   @override
+  String get deepScanMenuItem => 'Scan all ports (65,535)…';
+
+  @override
+  String deepScanConfirmTitle(String ip) {
+    return 'Scan all 65,535 ports on $ip?';
+  }
+
+  @override
+  String get deepScanConfirmBody =>
+      'This can take several minutes and generates significant network traffic to the device.';
+
+  @override
+  String get deepScanConfirmButton => 'Scan';
+
+  @override
+  String get deepScanBusyTooltip => 'Wait for the current scan to finish first';
+
+  @override
+  String get deepScanOfflineTooltip => 'Device is offline';
+
+  @override
   String get aboutTooltip => 'About';
 
   @override

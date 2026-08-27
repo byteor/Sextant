@@ -106,6 +106,15 @@
   "newDevicesTooltip": "Neue Geräte",
   "newDevicesDialogTitle": "Neue Geräte",
   "noNewDevicesYet": "Noch keine neuen Geräte.",
+  "deepScanMenuItem": "Alle Ports scannen (65.535)…",
+  "deepScanConfirmTitle": "Alle 65.535 Ports auf {ip} scannen?",
+  "@deepScanConfirmTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deepScanConfirmBody": "Dies kann mehrere Minuten dauern und erzeugt erheblichen Netzwerkverkehr zum Gerät.",
+  "deepScanConfirmButton": "Scannen",
+  "deepScanBusyTooltip": "Bitte warten, bis der aktuelle Scan abgeschlossen ist",
+  "deepScanOfflineTooltip": "Gerät ist offline",
   "aboutTooltip": "Info",
   "settingsTooltip": "Einstellungen",
 

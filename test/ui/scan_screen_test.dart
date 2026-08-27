@@ -25,6 +25,22 @@ class _FixedScanController extends ScanController {
   ScanState build() => _state;
 }
 
+class _SpyScanController extends _FixedScanController {
+  _SpyScanController(super.state);
+  Device? startedDevice;
+  ScanNetwork? startedNetwork;
+
+  @override
+  Future<List<int>?> startDeepPortScan(
+    Device device,
+    ScanNetwork network,
+  ) async {
+    startedDevice = device;
+    startedNetwork = network;
+    return null;
+  }
+}
+
 Device _dev(String ip, {String? mac}) {
   final t = DateTime.utc(2026, 1, 1);
   return Device(ip: ip, mac: mac, firstSeen: t, lastSeen: t);
@@ -361,6 +377,122 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(await historyDb.unacknowledgedCount(networkId), 0);
+    });
+  });
+
+  group('the "scan all ports" context menu item', () {
+    testWidgets('appears when long-pressing a device row', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await _pump(tester, [device]);
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Scan all ports (65,535)…'), findsOneWidget);
+    });
+
+    testWidgets('tapping it while a regular scan is running does not open '
+        'the confirm dialog', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await _pump(tester, [
+        device,
+      ], state: ScanState(devices: [device], isScanning: true));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Scan all 65,535 ports on'), findsNothing);
+    });
+
+    testWidgets('confirming the dialog starts a deep scan on the right '
+        'device and network', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      final network = _network();
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyScanController(ScanState(devices: [device])),
+          ),
+          networksProvider.overrideWith((ref) async => [network]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Scan all 65,535 ports on 10.0.0.7?'), findsOneWidget);
+
+      await tester.tap(find.text('Scan'));
+      await tester.pumpAndSettle();
+
+      final spy =
+          container.read(scanControllerProvider.notifier) as _SpyScanController;
+      expect(spy.startedDevice?.ip, '10.0.0.7');
+      expect(spy.startedNetwork, same(network));
+    });
+
+    testWidgets('cancelling the confirm dialog does not start a scan', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      final network = _network();
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyScanController(ScanState(devices: [device])),
+          ),
+          networksProvider.overrideWith((ref) async => [network]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      final spy =
+          container.read(scanControllerProvider.notifier) as _SpyScanController;
+      expect(spy.startedDevice, isNull);
     });
   });
 }

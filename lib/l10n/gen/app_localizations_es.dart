@@ -361,6 +361,27 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noNewDevicesYet => 'Aún no hay dispositivos nuevos.';
 
   @override
+  String get deepScanMenuItem => 'Escanear todos los puertos (65.535)…';
+
+  @override
+  String deepScanConfirmTitle(String ip) {
+    return '¿Escanear los 65.535 puertos de $ip?';
+  }
+
+  @override
+  String get deepScanConfirmBody =>
+      'Esto puede tardar varios minutos y genera tráfico de red significativo hacia el dispositivo.';
+
+  @override
+  String get deepScanConfirmButton => 'Escanear';
+
+  @override
+  String get deepScanBusyTooltip => 'Espera a que termine el análisis actual';
+
+  @override
+  String get deepScanOfflineTooltip => 'El dispositivo está fuera de línea';
+
+  @override
   String get aboutTooltip => 'Acerca de';
 
   @override

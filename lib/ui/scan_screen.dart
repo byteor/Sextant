@@ -838,6 +838,26 @@ class DeviceRow extends ConsumerWidget {
     final canOpenWeb =
         device.openPorts.contains(80) || device.openPorts.contains(443);
 
+    final scan = ref.read(scanControllerProvider);
+    final deepScanBusy =
+        scan.isScanning || scan.isBackgroundScanning || scan.isDeepScanning;
+    final deepScanDisabledReason = !device.isOnline
+        ? l10n.deepScanOfflineTooltip
+        : deepScanBusy
+        ? l10n.deepScanBusyTooltip
+        : null;
+    Widget deepScanTile = ListTile(
+      dense: true,
+      leading: const Icon(Icons.travel_explore),
+      title: Text(l10n.deepScanMenuItem),
+    );
+    if (deepScanDisabledReason != null) {
+      deepScanTile = Tooltip(
+        message: deepScanDisabledReason,
+        child: deepScanTile,
+      );
+    }
+
     final selected = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -927,6 +947,12 @@ class DeviceRow extends ConsumerWidget {
               title: Text(l10n.wakeOnLan),
             ),
           ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: deepScanDisabledReason == null ? 'deep_scan' : null,
+          enabled: deepScanDisabledReason == null,
+          child: deepScanTile,
+        ),
       ],
     );
     if (selected == null) return;
@@ -944,6 +970,8 @@ class DeviceRow extends ConsumerWidget {
         await Clipboard.setData(ClipboardData(text: device.mac ?? ''));
       case 'wake':
         if (context.mounted) await _wakeOnLan(context);
+      case 'deep_scan':
+        if (context.mounted) await _confirmAndStartDeepScan(context, ref);
     }
   }
 
@@ -960,6 +988,40 @@ class DeviceRow extends ConsumerWidget {
         SnackBar(content: Text(l10n.magicPacketFailed(e.toString()))),
       );
     }
+  }
+
+  Future<void> _confirmAndStartDeepScan(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.deepScanConfirmTitle(device.ip)),
+        content: Text(l10n.deepScanConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.deepScanConfirmButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final networks = ref.read(networksProvider).value ?? const [];
+    final selected = ref.read(selectedNetworkProvider);
+    final network = effectiveNetwork(networks, selected);
+    if (network == null) return;
+
+    await ref
+        .read(scanControllerProvider.notifier)
+        .startDeepPortScan(device, network);
   }
 
   Future<void> _renameDialog(BuildContext context, WidgetRef ref) async {

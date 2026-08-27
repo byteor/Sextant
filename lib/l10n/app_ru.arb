@@ -106,6 +106,15 @@
   "newDevicesTooltip": "Новые устройства",
   "newDevicesDialogTitle": "Новые устройства",
   "noNewDevicesYet": "Пока нет новых устройств.",
+  "deepScanMenuItem": "Сканировать все порты (65535)…",
+  "deepScanConfirmTitle": "Сканировать все 65535 портов {ip}?",
+  "@deepScanConfirmTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deepScanConfirmBody": "Это может занять несколько минут и создать значительную сетевую нагрузку на устройство.",
+  "deepScanConfirmButton": "Сканировать",
+  "deepScanBusyTooltip": "Дождитесь завершения текущего сканирования",
+  "deepScanOfflineTooltip": "Устройство не в сети",
   "aboutTooltip": "О программе",
   "settingsTooltip": "Настройки",
 
