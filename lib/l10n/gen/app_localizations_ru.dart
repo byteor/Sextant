@@ -397,10 +397,10 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# открытых порта',
-      many: '# открытых портов',
-      few: '# открытых порта',
-      one: '# открытый порт',
+      other: '$count открытых порта',
+      many: '$count открытых портов',
+      few: '$count открытых порта',
+      one: '$count открытый порт',
     );
     return '$_temp0';
   }

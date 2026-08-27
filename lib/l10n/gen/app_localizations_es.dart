@@ -391,8 +391,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# puertos abiertos',
-      one: '# puerto abierto',
+      other: '$count puertos abiertos',
+      one: '$count puerto abierto',
     );
     return '$_temp0';
   }

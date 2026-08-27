@@ -26,9 +26,15 @@ class _FixedScanController extends ScanController {
 }
 
 class _SpyScanController extends _FixedScanController {
-  _SpyScanController(super.state);
+  _SpyScanController(super.state, {this.result});
   Device? startedDevice;
   ScanNetwork? startedNetwork;
+
+  /// What [startDeepPortScan] resolves with — null (cancelled/blocked), an
+  /// empty list (completed, nothing found), or a populated list (completed,
+  /// found these ports). Defaults to null to match this spy's original
+  /// behavior for callers that don't care about the completion summary.
+  final List<int>? result;
 
   @override
   Future<List<int>?> startDeepPortScan(
@@ -37,7 +43,7 @@ class _SpyScanController extends _FixedScanController {
   ) async {
     startedDevice = device;
     startedNetwork = network;
-    return null;
+    return result;
   }
 }
 
@@ -503,6 +509,91 @@ void main() {
       final spy =
           container.read(scanControllerProvider.notifier) as _SpyScanController;
       expect(spy.startedDevice, isNull);
+    });
+  });
+
+  group('the deep-scan completion snackbar', () {
+    /// Drives the confirm-and-scan flow through to completion against a
+    /// [_SpyScanController] whose `startDeepPortScan` resolves with
+    /// [result], returning the container so callers can inspect it further.
+    Future<ProviderContainer> runToCompletion(
+      WidgetTester tester,
+      Device device,
+      List<int>? result,
+    ) async {
+      final network = _network();
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyScanController(
+              ScanState(devices: [device]),
+              result: result,
+            ),
+          ),
+          networksProvider.overrideWith((ref) async => [network]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan'));
+      await tester.pumpAndSettle();
+
+      return container;
+    }
+
+    testWidgets('a null result (cancelled or blocked) shows no completion '
+        'snackbar', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await runToCompletion(tester, device, null);
+
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('an empty result shows the "no open ports found" snackbar', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await runToCompletion(tester, device, const []);
+
+      expect(
+        find.text(
+          'Deep scan of 10.0.0.7 complete — no additional open ports found.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a non-empty result shows the found ports, pluralized, in '
+        'the completion snackbar', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await runToCompletion(tester, device, const [80, 443]);
+
+      expect(
+        find.text(
+          'Deep scan of 10.0.0.7 complete: 2 open ports found (80, 443)',
+        ),
+        findsOneWidget,
+      );
     });
   });
 

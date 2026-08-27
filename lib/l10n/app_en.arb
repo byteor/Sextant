@@ -182,7 +182,7 @@
       "total": { "type": "int" }
     }
   },
-  "deepScanOpenPortCount": "{count, plural, one{# open port} other{# open ports}}",
+  "deepScanOpenPortCount": "{count, plural, one{{count} open port} other{{count} open ports}}",
   "@deepScanOpenPortCount": {
     "placeholders": { "count": { "type": "int" } }
   },

@@ -123,7 +123,7 @@
       "total": { "type": "int" }
     }
   },
-  "deepScanOpenPortCount": "{count, plural, one{# открытый порт} few{# открытых порта} many{# открытых портов} other{# открытых порта}}",
+  "deepScanOpenPortCount": "{count, plural, one{{count} открытый порт} few{{count} открытых порта} many{{count} открытых портов} other{{count} открытых порта}}",
   "@deepScanOpenPortCount": {
     "placeholders": { "count": { "type": "int" } }
   },

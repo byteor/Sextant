@@ -713,7 +713,7 @@ abstract class AppLocalizations {
   /// No description provided for @deepScanOpenPortCount.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one{# open port} other{# open ports}}'**
+  /// **'{count, plural, one{{count} open port} other{{count} open ports}}'**
   String deepScanOpenPortCount(int count);
 
   /// No description provided for @deepScanComplete.
