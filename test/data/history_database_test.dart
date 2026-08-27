@@ -333,4 +333,41 @@ void main() {
       });
     },
   );
+
+  group('recordDeepScanPorts / allExtraPorts', () {
+    test('records ports found for a device', () async {
+      await db.recordDeepScanPorts('mac:aa:aa:aa:aa:aa:aa', 'wifi', [22, 8888]);
+
+      expect(await db.allExtraPorts(), [22, 8888]);
+    });
+
+    test(
+      'allExtraPorts is the deduplicated union across every device',
+      () async {
+        await db.recordDeepScanPorts('mac:aa:aa:aa:aa:aa:aa', 'wifi', [
+          22,
+          8888,
+        ]);
+        await db.recordDeepScanPorts('mac:bb:bb:bb:bb:bb:bb', 'wifi', [
+          8888,
+          9999,
+        ]);
+
+        expect(await db.allExtraPorts(), [22, 8888, 9999]);
+      },
+    );
+
+    test('recording the same port twice does not duplicate or throw', () async {
+      await db.recordDeepScanPorts('mac:aa:aa:aa:aa:aa:aa', 'wifi', [22]);
+      await db.recordDeepScanPorts('mac:aa:aa:aa:aa:aa:aa', 'wifi', [22]);
+
+      expect(await db.allExtraPorts(), [22]);
+    });
+
+    test('an empty port list records nothing', () async {
+      await db.recordDeepScanPorts('mac:aa:aa:aa:aa:aa:aa', 'wifi', []);
+
+      expect(await db.allExtraPorts(), isEmpty);
+    });
+  });
 }

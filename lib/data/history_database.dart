@@ -54,15 +54,33 @@ class SeenDevices extends Table {
   Set<Column> get primaryKey => {networkId, deviceIdentity};
 }
 
+/// One port found open on a device via a full (all-ports) deep scan, keyed
+/// by [deviceIdentity] alone — not network-scoped like [SeenDevices] — since
+/// "this device runs a service on this port" is a fact about the physical
+/// device, not the network it happens to be on right now. [networkId] is
+/// kept as metadata (which network it was discovered from) but isn't part
+/// of the lookup key. See `HistoryDatabase.allExtraPorts`, which unions
+/// every recorded port across every device into the regular scan's port
+/// list so these keep showing as open without re-running a full deep scan.
+class DeepScanPorts extends Table {
+  TextColumn get deviceIdentity => text()();
+  TextColumn get networkId => text()();
+  IntColumn get port => integer()();
+  DateTimeColumn get discoveredAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {deviceIdentity, port};
+}
+
 /// Drift-backed store for scan history. Construct with
 /// `HistoryDatabase(NativeDatabase.memory())` in tests, or the app's on-disk
 /// executor in production.
-@DriftDatabase(tables: [Scans, LatencySamples, SeenDevices])
+@DriftDatabase(tables: [Scans, LatencySamples, SeenDevices, DeepScanPorts])
 class HistoryDatabase extends _$HistoryDatabase {
   HistoryDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -70,6 +88,7 @@ class HistoryDatabase extends _$HistoryDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) await m.createTable(latencySamples);
       if (from < 3) await m.createTable(seenDevices);
+      if (from < 4) await m.createTable(deepScanPorts);
     },
   );
 
@@ -281,6 +300,40 @@ class HistoryDatabase extends _$HistoryDatabase {
             (t) => t.networkId.equals(networkId) & t.acknowledged.equals(false),
           ))
           .write(const SeenDevicesCompanion(acknowledged: Value(true)));
+
+  /// Records [ports] as found open on [deviceIdentity] via a deep (all-ports)
+  /// scan. A port already on record keeps its original [discoveredAt]
+  /// (insert-or-ignore) rather than being bumped to now on a repeat scan.
+  Future<void> recordDeepScanPorts(
+    String deviceIdentity,
+    String networkId,
+    List<int> ports,
+  ) async {
+    if (ports.isEmpty) return;
+    final now = DateTime.now();
+    await batch((b) {
+      b.insertAll(deepScanPorts, [
+        for (final port in ports)
+          DeepScanPortsCompanion.insert(
+            deviceIdentity: deviceIdentity,
+            networkId: networkId,
+            port: port,
+            discoveredAt: now,
+          ),
+      ], mode: InsertMode.insertOrIgnore);
+    });
+  }
+
+  /// Every port ever recorded via a deep scan, across every device —
+  /// deduplicated and sorted. Merged into the regular scan's port list (see
+  /// `ScanController._buildOrchestrator`) so previously-found ports keep
+  /// showing as open without re-running a full deep scan.
+  Future<List<int>> allExtraPorts() async {
+    final query = selectOnly(deepScanPorts, distinct: true)
+      ..addColumns([deepScanPorts.port]);
+    final rows = await query.get();
+    return [for (final row in rows) row.read(deepScanPorts.port)!]..sort();
+  }
 
   /// Deletes the oldest scans so at most [maxScans] remain.
   Future<void> _pruneTo(int maxScans) async {
