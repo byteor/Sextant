@@ -597,6 +597,119 @@ void main() {
     });
   });
 
+  group('the toolbar during a deep scan', () {
+    late HistoryDatabase historyDb;
+
+    setUp(() => historyDb = HistoryDatabase(NativeDatabase.memory()));
+    tearDown(() => historyDb.close());
+
+    const monitoringTooltip =
+        'Live monitoring — re-scan and alert on new devices';
+
+    /// The SCAN button (shown whenever the state isn't [ScanState.isBusy],
+    /// which a deep scan never is — it has its own flag).
+    FilledButton scanButton(WidgetTester tester) =>
+        tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'SCAN'));
+
+    IconButton monitoringButton(WidgetTester tester) => tester.widget<IconButton>(
+      find
+          .ancestor(
+            of: find.byTooltip(monitoringTooltip),
+            matching: find.byType(IconButton),
+          )
+          .first,
+    );
+
+    testWidgets('SCAN and the monitoring toggle are enabled when idle', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        [],
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      expect(scanButton(tester).onPressed, isNotNull);
+      expect(monitoringButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('SCAN is disabled while a deep scan is running', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.9', mac: 'ee:ee:ee:ee:ee:ee');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: device.ip,
+          deepScanCompleted: 10,
+          deepScanTotal: 65535,
+        ),
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      // Still visible (a deep scan doesn't set isBusy, so the STOP button
+      // isn't swapped in) but not actionable.
+      expect(scanButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('the monitoring toggle is disabled while a deep scan is '
+        'running', (tester) async {
+      final device = _dev('10.0.0.9', mac: 'ee:ee:ee:ee:ee:ee');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: device.ip,
+          deepScanCompleted: 10,
+          deepScanTotal: 65535,
+        ),
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      expect(monitoringButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('the monitoring toggle is still disabled during a deep scan '
+        'when monitoring is already on', (tester) async {
+      final device = _dev('10.0.0.9', mac: 'ee:ee:ee:ee:ee:ee');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isMonitoring: true,
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: device.ip,
+          deepScanCompleted: 10,
+          deepScanTotal: 65535,
+        ),
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byTooltip('Stop live monitoring'),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.onPressed, isNull);
+    });
+  });
+
   group('deep scan progress display', () {
     testWidgets('the deep-scanned device\'s row shows a progress ring '
         'instead of its status dot', (tester) async {

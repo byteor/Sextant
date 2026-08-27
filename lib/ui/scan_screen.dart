@@ -208,7 +208,10 @@ class _Toolbar extends ConsumerWidget {
           )
         else
           FilledButton.icon(
-            onPressed: effective == null
+            // Also disabled during a deep scan: only one thing may mutate the
+            // live device list at a time (see ScanController's mutual
+            // exclusion), and a deep scan doesn't set isBusy.
+            onPressed: effective == null || scan.isDeepScanning
                 ? null
                 : () => ref
                       .read(scanControllerProvider.notifier)
@@ -224,7 +227,9 @@ class _Toolbar extends ConsumerWidget {
           isSelected: scan.isMonitoring,
           selectedIcon: const Icon(Icons.sensors),
           icon: const Icon(Icons.sensors_off_outlined),
-          onPressed: effective == null
+          // Disabled during a deep scan for the same reason as SCAN above:
+          // enabling monitoring would schedule ticks that race it for _byIp.
+          onPressed: effective == null || scan.isDeepScanning
               ? null
               : () => ref
                     .read(scanControllerProvider.notifier)
