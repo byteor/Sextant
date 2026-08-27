@@ -369,5 +369,95 @@ void main() {
 
       expect(await db.allExtraPorts(), isEmpty);
     });
+
+    test('allExtraPorts caps the result at the 200 most recently discovered '
+        'ports', () async {
+      // A device that answers far too broadly (a tarpit, some NAT/proxy
+      // appliances) puts 250 distinct ports on record months ago...
+      await _recordPortsAt(
+        db,
+        'mac:aa:aa:aa:aa:aa:aa',
+        [for (var p = 1000; p < 1250; p++) p],
+        DateTime.utc(2026, 1, 1),
+      );
+      // ...and a recent deep scan of another device finds a handful more.
+      await _recordPortsAt(
+        db,
+        'mac:bb:bb:bb:bb:bb:bb',
+        [22, 80, 443, 8080, 8888],
+        DateTime.utc(2026, 6, 1),
+      );
+
+      final ports = await db.allExtraPorts();
+
+      // Capped, even though 255 distinct ports are on record — otherwise
+      // every host of every future regular scan would be probed on all 255.
+      expect(ports, hasLength(200));
+      // The most recently discovered ones always survive the cap.
+      expect(ports, containsAll([22, 80, 443, 8080, 8888]));
+      // ...and the oldest ones are the ones dropped.
+      expect(ports.where((p) => p >= 1000 && p < 1250), hasLength(195));
+      // Still returned sorted ascending, as the scan port list expects.
+      expect(ports, orderedEquals(ports.toList()..sort()));
+    });
+
+    test('allExtraPorts returns everything when under the cap', () async {
+      await db.recordDeepScanPorts('mac:aa:aa:aa:aa:aa:aa', 'wifi', [
+        for (var p = 1000; p < 1150; p++) p,
+      ]);
+
+      expect(await db.allExtraPorts(), hasLength(150));
+    });
+
+    test('allExtraPorts honours an explicit limit, newest first', () async {
+      await _recordPortsAt(db, 'mac:aa:aa:aa:aa:aa:aa', [
+        22,
+        80,
+      ], DateTime.utc(2026, 1, 1));
+      await _recordPortsAt(db, 'mac:bb:bb:bb:bb:bb:bb', [
+        443,
+      ], DateTime.utc(2026, 6, 1));
+
+      expect(await db.allExtraPorts(limit: 1), [443]);
+    });
+
+    test('a port re-found by a later scan of another device counts as '
+        'recently discovered', () async {
+      await _recordPortsAt(db, 'mac:aa:aa:aa:aa:aa:aa', [
+        22,
+        80,
+      ], DateTime.utc(2026, 1, 1));
+      await _recordPortsAt(db, 'mac:bb:bb:bb:bb:bb:bb', [
+        22,
+      ], DateTime.utc(2026, 6, 1));
+
+      // 22 is the newest sighting of any port, so it wins a limit of 1 even
+      // though it was also recorded (older) against another device.
+      expect(await db.allExtraPorts(limit: 1), [22]);
+    });
   });
 }
+
+/// Inserts [ports] for [identity] stamped at [at].
+///
+/// [HistoryDatabase.recordDeepScanPorts] always stamps `DateTime.now()`, so
+/// it can't express the "discovered months apart" ordering that
+/// [HistoryDatabase.allExtraPorts]'s recency cap is about — drift compares
+/// these timestamps at whole-second resolution, which real deep scans are
+/// always further apart than.
+Future<void> _recordPortsAt(
+  HistoryDatabase db,
+  String identity,
+  List<int> ports,
+  DateTime at,
+) => db.batch(
+  (b) => b.insertAll(db.deepScanPorts, [
+    for (final port in ports)
+      DeepScanPortsCompanion.insert(
+        deviceIdentity: identity,
+        networkId: 'wifi',
+        port: port,
+        discoveredAt: at,
+      ),
+  ]),
+);

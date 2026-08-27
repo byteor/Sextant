@@ -324,13 +324,29 @@ class HistoryDatabase extends _$HistoryDatabase {
     });
   }
 
-  /// Every port ever recorded via a deep scan, across every device —
-  /// deduplicated and sorted. Merged into the regular scan's port list (see
+  /// The [limit] most recently discovered ports recorded via a deep scan,
+  /// across every device — deduplicated and returned sorted ascending. Merged
+  /// into the regular scan's port list (see
   /// `ScanController._buildOrchestrator`) so previously-found ports keep
   /// showing as open without re-running a full deep scan.
-  Future<List<int>> allExtraPorts() async {
-    final query = selectOnly(deepScanPorts, distinct: true)
-      ..addColumns([deepScanPorts.port]);
+  ///
+  /// Capped because this list is probed against *every* host of *every*
+  /// future regular scan: a single broadly-responding device (a tarpitting
+  /// firewall, some NAT/proxy appliances) could otherwise add hundreds of
+  /// ports to every host's probe list forever. Recency wins, so the cap
+  /// keeps what was found most recently rather than an arbitrary slice.
+  /// A port's discovery date is the newest time any device was recorded as
+  /// having it open. Drift compares these dates at whole-second resolution,
+  /// so ports recorded in the same second — in practice the ports of one
+  /// deep scan, which stamps them all at once — tie, and which of them
+  /// survives a cap boundary that falls inside that scan is arbitrary.
+  Future<List<int>> allExtraPorts({int limit = 200}) async {
+    final newestDiscovery = deepScanPorts.discoveredAt.max();
+    final query = selectOnly(deepScanPorts)
+      ..addColumns([deepScanPorts.port, newestDiscovery])
+      ..groupBy([deepScanPorts.port])
+      ..orderBy([OrderingTerm.desc(newestDiscovery)])
+      ..limit(limit);
     final rows = await query.get();
     return [for (final row in rows) row.read(deepScanPorts.port)!]..sort();
   }
