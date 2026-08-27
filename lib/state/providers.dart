@@ -284,7 +284,21 @@ class ScanController extends Notifier<ScanState> {
   }
 
   Future<void> startScan(ScanNetwork network) async {
-    if (state.isScanning || state.isDeepScanning) return;
+    if (state.isScanning ||
+        state.isBackgroundScanning ||
+        state.isDeepScanning) {
+      return;
+    }
+    // Written synchronously, before any await, so a concurrent startScan/
+    // _monitorTick/startDeepPortScan call sees isScanning flip the instant
+    // this scan begins, not after the prefetch awaits below complete.
+    final total = network.subnet.hostAddresses().length;
+    state = ScanState(
+      isScanning: true,
+      total: total,
+      isMonitoring: _monitoring,
+    );
+
     await _sub?.cancel();
     _byIp.clear();
     _probed = 0;
@@ -295,13 +309,6 @@ class ScanController extends Notifier<ScanState> {
     _oui = await ref.read(ouiLookupProvider.future);
     final store = await ref.read(renameStoreProvider.future);
     final typeStore = await ref.read(typeOverrideStoreProvider.future);
-    final total = network.subnet.hostAddresses().length;
-
-    state = ScanState(
-      isScanning: true,
-      total: total,
-      isMonitoring: _monitoring,
-    );
 
     final orchestrator = await _buildOrchestrator();
     _orchestrator = orchestrator;
@@ -485,6 +492,17 @@ class ScanController extends Notifier<ScanState> {
   /// returning the decorated devices it found. The on-screen list keeps showing
   /// the previous results until [_reconcile] applies the delta.
   Future<List<Device>> _backgroundScan(ScanNetwork network) async {
+    // Surface the otherwise-invisible re-scan as a progress bar, without
+    // touching the displayed device list. Progress lives in dedicated
+    // background fields so it can't collide with a foreground scan's display.
+    // Written synchronously, before any await, so a concurrent startScan/
+    // startDeepPortScan call sees isBackgroundScanning flip the instant this
+    // scan begins, not after the prefetch awaits below complete.
+    state = state.copyWith(
+      isBackgroundScanning: true,
+      backgroundScanned: 0,
+      backgroundTotal: network.subnet.hostAddresses().length,
+    );
     final store = await ref.read(renameStoreProvider.future);
     final typeStore = await ref.read(typeOverrideStoreProvider.future);
     final byIp = <String, Device>{};
@@ -492,14 +510,6 @@ class ScanController extends Notifier<ScanState> {
     _monitorOrchestrator = orchestrator;
     final completer = Completer<void>();
     _monitorCompleter = completer;
-    // Surface the otherwise-invisible re-scan as a progress bar, without
-    // touching the displayed device list. Progress lives in dedicated
-    // background fields so it can't collide with a foreground scan's display.
-    state = state.copyWith(
-      isBackgroundScanning: true,
-      backgroundScanned: 0,
-      backgroundTotal: network.subnet.hostAddresses().length,
-    );
     _monitorSub = orchestrator
         .scan(
           network,
