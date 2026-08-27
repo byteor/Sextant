@@ -14,6 +14,7 @@ class ScanState {
     this.isBackgroundScanning = false,
     this.backgroundScanned = 0,
     this.backgroundTotal = 0,
+    this.justDiscoveredIdentities = const {},
   });
 
   final bool isScanning;
@@ -52,6 +53,16 @@ class ScanState {
   final int backgroundScanned;
   final int backgroundTotal;
 
+  /// Identities recorded as newly-discovered (never seen on this network
+  /// before, durably — see `HistoryDatabase.recordNewDevices`) during the
+  /// most recent scan pass. Drives the "just discovered" row highlight;
+  /// replaced with a fresh set on every scan, so a device stops being
+  /// highlighted the moment the next scan runs, even if the user never
+  /// opened the "new devices" list. Unlike [lastNewDevices] (session-only,
+  /// drives the monitoring snackbar), this persists across app restarts and
+  /// also fires for manual scans, not just monitoring ticks.
+  final Set<String> justDiscoveredIdentities;
+
   bool get isBusy => isScanning || enriching;
 
   double get progress => total == 0 ? 0 : scanned / total;
@@ -71,6 +82,7 @@ class ScanState {
     bool? isBackgroundScanning,
     int? backgroundScanned,
     int? backgroundTotal,
+    Set<String>? justDiscoveredIdentities,
   }) {
     return ScanState(
       isScanning: isScanning ?? this.isScanning,
@@ -84,6 +96,8 @@ class ScanState {
       isBackgroundScanning: isBackgroundScanning ?? this.isBackgroundScanning,
       backgroundScanned: backgroundScanned ?? this.backgroundScanned,
       backgroundTotal: backgroundTotal ?? this.backgroundTotal,
+      justDiscoveredIdentities:
+          justDiscoveredIdentities ?? this.justDiscoveredIdentities,
     );
   }
 }

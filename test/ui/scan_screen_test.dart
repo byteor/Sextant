@@ -1,11 +1,16 @@
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/data/device_identity.dart';
+import 'package:sextant/data/history_database.dart';
 import 'package:sextant/l10n/gen/app_localizations.dart';
 import 'package:sextant/l10n/supported_locales.dart';
 import 'package:sextant/model/device.dart';
+import 'package:sextant/model/network_info.dart';
+import 'package:sextant/scan/ipv4_subnet.dart';
 import 'package:sextant/state/column_widths.dart';
 import 'package:sextant/state/providers.dart';
 import 'package:sextant/state/scan_state.dart';
@@ -20,15 +25,27 @@ class _FixedScanController extends ScanController {
   ScanState build() => _state;
 }
 
-Device _dev(String ip) {
+Device _dev(String ip, {String? mac}) {
   final t = DateTime.utc(2026, 1, 1);
-  return Device(ip: ip, firstSeen: t, lastSeen: t);
+  return Device(ip: ip, mac: mac, firstSeen: t, lastSeen: t);
+}
+
+ScanNetwork _network() {
+  final addr = InternetAddress('192.168.1.10');
+  return ScanNetwork(
+    interfaceName: 'en0',
+    displayName: 'Wi-Fi',
+    address: addr,
+    subnet: Ipv4Subnet.fromHostAndPrefix(addr, 24),
+  );
 }
 
 Future<void> _pump(
   WidgetTester tester,
   List<Device> devices, {
   ScanState? state,
+  List<ScanNetwork> networks = const [],
+  HistoryDatabase? historyDatabase,
 }) async {
   // The device table's fixed-width columns (plus the toolbar) need more
   // horizontal space than flutter_test's default 800x600 surface, which
@@ -48,20 +65,26 @@ Future<void> _pump(
   final tempDir = await tester.runAsync(
     () => Directory.systemTemp.createTemp('sextant_scan_screen_test'),
   );
-  addTearDown(() => tester.runAsync(() async {
-        if (await tempDir!.exists()) await tempDir.delete(recursive: true);
-      }));
+  addTearDown(
+    () => tester.runAsync(() async {
+      if (await tempDir!.exists()) await tempDir.delete(recursive: true);
+    }),
+  );
 
-  final container = ProviderContainer(overrides: [
-    scanControllerProvider.overrideWith(
-      () => _FixedScanController(state ?? ScanState(devices: devices)),
-    ),
-    networksProvider.overrideWith((ref) async => []),
-    // settingsProvider also reads the app-support directory via
-    // path_provider — overridden so opening the Settings screen
-    // (pushed on top of this widget tree) resolves deterministically.
-    settingsFileDirProvider.overrideWith((ref) async => tempDir!.path),
-  ]);
+  final container = ProviderContainer(
+    overrides: [
+      scanControllerProvider.overrideWith(
+        () => _FixedScanController(state ?? ScanState(devices: devices)),
+      ),
+      networksProvider.overrideWith((ref) async => networks),
+      // settingsProvider also reads the app-support directory via
+      // path_provider — overridden so opening the Settings screen
+      // (pushed on top of this widget tree) resolves deterministically.
+      settingsFileDirProvider.overrideWith((ref) async => tempDir!.path),
+      if (historyDatabase != null)
+        historyDatabaseProvider.overrideWithValue(historyDatabase),
+    ],
+  );
   addTearDown(container.dispose);
   await tester.runAsync(() => container.read(settingsProvider.future));
 
@@ -95,22 +118,27 @@ void main() {
   });
 
   group('ScanState.backgroundProgress', () {
-    test('is 0 when the host count is not yet known (avoids divide-by-zero)',
-        () {
-      expect(const ScanState(backgroundTotal: 0).backgroundProgress, 0);
-    });
+    test(
+      'is 0 when the host count is not yet known (avoids divide-by-zero)',
+      () {
+        expect(const ScanState(backgroundTotal: 0).backgroundProgress, 0);
+      },
+    );
 
     test('is scanned/total once the host count is known', () {
       expect(
-        const ScanState(backgroundScanned: 3, backgroundTotal: 12)
-            .backgroundProgress,
+        const ScanState(
+          backgroundScanned: 3,
+          backgroundTotal: 12,
+        ).backgroundProgress,
         0.25,
       );
     });
   });
 
-  testWidgets('the version/About/Settings group is flush to the right edge',
-      (tester) async {
+  testWidgets('the version/About/Settings group is flush to the right edge', (
+    tester,
+  ) async {
     await _pump(tester, []);
     // The Settings button is the right-most toolbar item; it must sit flush
     // against the toolbar's right edge — only the AppBar's titleSpacing (16)
@@ -122,8 +150,9 @@ void main() {
     expect(1400 - settingsRight, lessThan(40));
   });
 
-  testWidgets('a background monitor re-scan shows a determinate progress bar',
-      (tester) async {
+  testWidgets('a background monitor re-scan shows a determinate progress bar', (
+    tester,
+  ) async {
     await _pump(
       tester,
       [],
@@ -140,11 +169,15 @@ void main() {
       matching: find.byType(LinearProgressIndicator),
     );
     expect(bar, findsOneWidget);
-    expect(tester.widget<LinearProgressIndicator>(bar).value, closeTo(0.25, 1e-9));
+    expect(
+      tester.widget<LinearProgressIndicator>(bar).value,
+      closeTo(0.25, 1e-9),
+    );
   });
 
-  testWidgets('an idle (non-scanning) state shows no progress bar',
-      (tester) async {
+  testWidgets('an idle (non-scanning) state shows no progress bar', (
+    tester,
+  ) async {
     await _pump(tester, []);
     expect(
       find.descendant(
@@ -155,7 +188,9 @@ void main() {
     );
   });
 
-  testWidgets('there is no "Network map" button in the toolbar', (tester) async {
+  testWidgets('there is no "Network map" button in the toolbar', (
+    tester,
+  ) async {
     await _pump(tester, []);
 
     expect(find.byTooltip('Network map'), findsNothing);
@@ -197,19 +232,135 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the toolbar shows the version and an About button',
-      (tester) async {
+  testWidgets('the toolbar shows the version and an About button', (
+    tester,
+  ) async {
     await _pump(tester, []);
 
     expect(find.byTooltip('About'), findsOneWidget);
     expect(find.textContaining('1.'), findsOneWidget);
   });
 
-  testWidgets('the toolbar has a Settings button that opens SettingsScreen',
-      (tester) async {
+  testWidgets('the toolbar has a Settings button that opens SettingsScreen', (
+    tester,
+  ) async {
     await _pump(tester, []);
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsWidgets); // AppBar title + tooltip text
+  });
+
+  group('the "just discovered" row highlight', () {
+    testWidgets('a device in justDiscoveredIdentities gets a green row '
+        'background', (tester) async {
+      final device = _dev('10.0.0.5', mac: 'aa:aa:aa:aa:aa:aa');
+      final identity = deviceIdentity(mac: device.mac);
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          justDiscoveredIdentities: {identity},
+        ),
+      );
+
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(DeviceRow),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, Colors.green.withValues(alpha: 0.15));
+    });
+
+    testWidgets('a device not in justDiscoveredIdentities keeps its normal '
+        'background', (tester) async {
+      final device = _dev('10.0.0.6', mac: 'bb:bb:bb:bb:bb:bb');
+      await _pump(tester, [], state: ScanState(devices: [device]));
+
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(DeviceRow),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, Colors.transparent);
+    });
+  });
+
+  group('the "new devices" toolbar button', () {
+    late HistoryDatabase historyDb;
+
+    setUp(() => historyDb = HistoryDatabase(NativeDatabase.memory()));
+    tearDown(() => historyDb.close());
+
+    testWidgets('is hidden when no network is selected', (tester) async {
+      await _pump(tester, []); // no networks -> no selected network
+
+      expect(find.byTooltip('New devices'), findsNothing);
+    });
+
+    testWidgets('shows no badge when there are no unacknowledged new '
+        'devices', (tester) async {
+      final network = _network();
+      await _pump(tester, [], networks: [network], historyDatabase: historyDb);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byTooltip('New devices'),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.isSelected, isFalse);
+    });
+
+    testWidgets('shows the unread count, and opening the dialog '
+        'acknowledges it', (tester) async {
+      final network = _network();
+      final networkId = network.id;
+      // First scan establishes the baseline; the second reports 'bb' as new.
+      await historyDb.recordNewDevices(networkId, [
+        _dev('10.0.0.1', mac: 'aa:aa:aa:aa:aa:aa'),
+      ]);
+      await historyDb.recordNewDevices(networkId, [
+        _dev('10.0.0.1', mac: 'aa:aa:aa:aa:aa:aa'),
+        _dev('10.0.0.2', mac: 'bb:bb:bb:bb:bb:bb'),
+      ]);
+      expect(await historyDb.unacknowledgedCount(networkId), 1);
+
+      await _pump(tester, [], networks: [network], historyDatabase: historyDb);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('1'), findsOneWidget);
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byTooltip('New devices'),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.isSelected, isTrue);
+
+      await tester.tap(find.byTooltip('New devices'));
+      await tester.pumpAndSettle();
+
+      // The entry's title is its displayName, which for a hostname-less
+      // device falls back to the IP — an exact match distinguishes it from
+      // the subtitle's "10.0.0.2 · <date>" text, which also contains it.
+      expect(find.text('10.0.0.2'), findsOneWidget);
+
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      expect(await historyDb.unacknowledgedCount(networkId), 0);
+    });
   });
 }

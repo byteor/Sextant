@@ -91,12 +91,11 @@ class _NetworkHistorySection extends StatelessWidget {
       child: ExpansionTile(
         initiallyExpanded: true,
         leading: const Icon(Icons.lan_outlined),
-        title: Text(group.networkLabel,
-            style: theme.textTheme.titleMedium),
+        title: Text(group.networkLabel, style: theme.textTheme.titleMedium),
         subtitle: Text(
           l10n.historySummaryLine(
             l10n.historyScanCount(group.scans.length),
-            _formatTime(group.latest.timestamp),
+            formatScanTimestamp(group.latest.timestamp),
             l10n.historyDeviceCount(group.latest.deviceCount),
           ),
         ),
@@ -133,8 +132,11 @@ class _ChangeTile extends StatelessWidget {
       leading: Icon(icon, color: color, size: 20),
       title: Row(
         children: [
-          Icon(deviceTypeIcon(entry.device.deviceType),
-              size: 16, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            deviceTypeIcon(entry.device.deviceType),
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -146,9 +148,10 @@ class _ChangeTile extends StatelessWidget {
       ),
       subtitle: Text(_describe(l10n, entry)),
       trailing: Text(
-        _formatTime(entry.timestamp),
-        style: theme.textTheme.bodySmall
-            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        formatScanTimestamp(entry.timestamp),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -172,8 +175,7 @@ class _ChangeTile extends StatelessWidget {
       case ScanChangeKind.disappeared:
         return l10n.changeDisappeared(ip);
       case ScanChangeKind.changed:
-        final what =
-            entry.fields.map((f) => _fieldLabel(l10n, f)).join(', ');
+        final what = entry.fields.map((f) => _fieldLabel(l10n, f)).join(', ');
         return l10n.changeChanged(what, ip);
     }
   }
@@ -205,30 +207,22 @@ class _EmptyHistory extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.history,
-              size: 48, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.history,
+            size: 48,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 12),
           Text(l10n.noScanHistoryYet, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
             l10n.runScanHint,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-/// Formats a timestamp as a compact local date-time, e.g. "Jun 22, 14:30".
-String _formatTime(DateTime utc) {
-  final t = utc.toLocal();
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  final hh = t.hour.toString().padLeft(2, '0');
-  final mm = t.minute.toString().padLeft(2, '0');
-  return '${months[t.month - 1]} ${t.day}, $hh:$mm';
 }

@@ -103,6 +103,9 @@
   "exportAsCsv": "Экспорт в CSV…",
   "exportAsJson": "Экспорт в JSON…",
   "scanHistoryTooltip": "История сканирований",
+  "newDevicesTooltip": "Новые устройства",
+  "newDevicesDialogTitle": "Новые устройства",
+  "noNewDevicesYet": "Пока нет новых устройств.",
   "aboutTooltip": "О программе",
   "settingsTooltip": "Настройки",
 

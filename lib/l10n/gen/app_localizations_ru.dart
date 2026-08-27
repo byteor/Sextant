@@ -357,6 +357,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get scanHistoryTooltip => 'История сканирований';
 
   @override
+  String get newDevicesTooltip => 'Новые устройства';
+
+  @override
+  String get newDevicesDialogTitle => 'Новые устройства';
+
+  @override
+  String get noNewDevicesYet => 'Пока нет новых устройств.';
+
+  @override
   String get aboutTooltip => 'О программе';
 
   @override

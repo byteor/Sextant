@@ -41,7 +41,9 @@ final renameStoreProvider = FutureProvider<RenameStore>((ref) async {
 });
 
 /// Loads (and caches) the persisted manual-device-type store.
-final typeOverrideStoreProvider = FutureProvider<TypeOverrideStore>((ref) async {
+final typeOverrideStoreProvider = FutureProvider<TypeOverrideStore>((
+  ref,
+) async {
   final dir = await getApplicationSupportDirectory();
   final store = TypeOverrideStore(File('${dir.path}/device_types.json'));
   await store.load();
@@ -52,16 +54,20 @@ final typeOverrideStoreProvider = FutureProvider<TypeOverrideStore>((ref) async 
 /// directory. Opened lazily on first query and closed when the provider is
 /// disposed.
 final historyDatabaseProvider = Provider<HistoryDatabase>((ref) {
-  final db = HistoryDatabase(driftDatabase(
-    name: 'sextant_history',
-    // drift_flutter defaults to getApplicationDocumentsDirectory(), which is
-    // a TCC-protected folder on macOS (the app has no entitlement for it,
-    // unlike the disabled App Sandbox) — opening the database there fails
-    // with SqliteException(14) "unable to open database file". Every other
-    // local store in this app (device names/types, OUI cache) already uses
-    // the app support directory, which isn't TCC-protected; match that.
-    native: DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
-  ));
+  final db = HistoryDatabase(
+    driftDatabase(
+      name: 'sextant_history',
+      // drift_flutter defaults to getApplicationDocumentsDirectory(), which is
+      // a TCC-protected folder on macOS (the app has no entitlement for it,
+      // unlike the disabled App Sandbox) — opening the database there fails
+      // with SqliteException(14) "unable to open database file". Every other
+      // local store in this app (device names/types, OUI cache) already uses
+      // the app support directory, which isn't TCC-protected; match that.
+      native: DriftNativeOptions(
+        databaseDirectory: getApplicationSupportDirectory,
+      ),
+    ),
+  );
   ref.onDispose(db.close);
   return db;
 });
@@ -69,8 +75,9 @@ final historyDatabaseProvider = Provider<HistoryDatabase>((ref) {
 /// The persisted scan history, grouped by network (each network and its scans
 /// most-recent-first) for the history screen. Invalidated by [ScanController]
 /// whenever a new snapshot is saved.
-final scanHistoryProvider =
-    FutureProvider<List<NetworkScanHistory>>((ref) async {
+final scanHistoryProvider = FutureProvider<List<NetworkScanHistory>>((
+  ref,
+) async {
   final db = ref.watch(historyDatabaseProvider);
   final settings = await ref.watch(settingsProvider.future);
   return groupByNetwork(await db.recentScans(limit: settings.historyRetention));
@@ -78,12 +85,43 @@ final scanHistoryProvider =
 
 /// The recent latency history for one device (by stable identity), used to
 /// draw its sparkline. Invalidated whenever new samples are recorded.
-final latencyHistoryProvider =
-    FutureProvider.family<List<double>, String>((ref, deviceIdentity) async {
+final latencyHistoryProvider = FutureProvider.family<List<double>, String>((
+  ref,
+  deviceIdentity,
+) async {
   final db = ref.watch(historyDatabaseProvider);
   final samples = await db.latencyHistory(deviceIdentity);
   return [for (final s in samples) s.rttMs];
 });
+
+/// Count of devices recorded as new on [networkId] the user hasn't
+/// acknowledged yet — drives the toolbar's "new devices" badge. Invalidated
+/// whenever a scan records new devices (see [ScanController]) or the list is
+/// opened (see [acknowledgeNewDevices]).
+final unreadNewDeviceCountProvider = FutureProvider.family<int, String>((
+  ref,
+  networkId,
+) async {
+  final db = ref.watch(historyDatabaseProvider);
+  return db.unacknowledgedCount(networkId);
+});
+
+/// Every device ever recorded as newly-discovered on [networkId], newest
+/// first — backs the "new devices" list.
+final recentlySeenDevicesProvider =
+    FutureProvider.family<List<SeenDevice>, String>((ref, networkId) async {
+      final db = ref.watch(historyDatabaseProvider);
+      return db.recentlySeenDevices(networkId);
+    });
+
+/// Marks every unacknowledged device on [networkId] as acknowledged (the
+/// user has now opened the "new devices" list) and refreshes the badge/list.
+/// Takes a [WidgetRef] since it's triggered from that list's UI.
+Future<void> acknowledgeNewDevices(WidgetRef ref, String networkId) async {
+  await ref.read(historyDatabaseProvider).acknowledgeNewDevices(networkId);
+  ref.invalidate(unreadNewDeviceCountProvider(networkId));
+  ref.invalidate(recentlySeenDevicesProvider(networkId));
+}
 
 /// The OUI → vendor lookup. Prefers a previously-refreshed cache in the app
 /// support directory over the bundled IEEE snapshot (`assets/oui.tsv`,
@@ -97,9 +135,11 @@ final ouiLookupProvider = FutureProvider<OuiVendorLookup>((ref) async {
   final cacheFile = File('${dir.path}/oui_cache.tsv');
   final settings = await ref.watch(settingsProvider.future);
   if (settings.vendorDbAutoRefresh) {
-    unawaited(OuiRefresher(
-      maxAge: Duration(days: settings.vendorDbRefreshIntervalDays),
-    ).refreshIfStale(cacheFile));
+    unawaited(
+      OuiRefresher(
+        maxAge: Duration(days: settings.vendorDbRefreshIntervalDays),
+      ).refreshIfStale(cacheFile),
+    );
   }
 
   try {
@@ -147,8 +187,8 @@ final networkChangeProvider = StreamProvider<int>(
 /// The network the user has selected to scan (defaults to the first/Wi-Fi).
 final selectedNetworkProvider =
     NotifierProvider<SelectedNetworkController, ScanNetwork?>(
-  SelectedNetworkController.new,
-);
+      SelectedNetworkController.new,
+    );
 
 class SelectedNetworkController extends Notifier<ScanNetwork?> {
   @override
@@ -162,8 +202,8 @@ class SelectedNetworkController extends Notifier<ScanNetwork?> {
 /// [ColumnWidths]'s defaults on every app launch.
 final columnWidthsProvider =
     NotifierProvider<ColumnWidthsController, ColumnWidths>(
-  ColumnWidthsController.new,
-);
+      ColumnWidthsController.new,
+    );
 
 class ColumnWidthsController extends Notifier<ColumnWidths> {
   @override
@@ -173,8 +213,9 @@ class ColumnWidthsController extends Notifier<ColumnWidths> {
       state = state.resized(column, delta);
 }
 
-final scanControllerProvider =
-    NotifierProvider<ScanController, ScanState>(ScanController.new);
+final scanControllerProvider = NotifierProvider<ScanController, ScanState>(
+  ScanController.new,
+);
 
 /// Drives a scan of a [ScanNetwork] and maintains the live, IP-sorted device
 /// list: progressive TCP results first, then MAC/vendor enrichment from the ARP
@@ -209,7 +250,8 @@ class ScanController extends Notifier<ScanState> {
   /// current settings, falling back to all-enabled (prior behavior) until
   /// settings have loaded.
   ScanOrchestrator _buildOrchestrator() {
-    final enabled = ref.read(settingsProvider).value?.enabledProtocols ??
+    final enabled =
+        ref.read(settingsProvider).value?.enabledProtocols ??
         ScanProtocol.values.toSet();
     return ScanOrchestrator(
       icmpEnabled: enabled.contains(ScanProtocol.icmp),
@@ -258,36 +300,38 @@ class ScanController extends Notifier<ScanState> {
     _scanCompleter = completer;
     _sub = orchestrator
         .scan(
-      network,
-      onHostComplete: (done, _) {
-        _probed = done;
-        _emit(isScanning: true);
-      },
-      onProgress: (p) {
-        _scanProgress = p;
-        _emit(isScanning: true);
-      },
-    )
+          network,
+          onHostComplete: (done, _) {
+            _probed = done;
+            _emit(isScanning: true);
+          },
+          onProgress: (p) {
+            _scanProgress = p;
+            _emit(isScanning: true);
+          },
+        )
         .listen(
-      (observation) {
-        final merged = _merge(_byIp[observation.ip], observation);
-        _byIp[observation.ip] = _decorate(merged, store, typeStore);
-        _emit(isScanning: true);
-      },
-      onError: (_) {},
-      onDone: () {
-        if (!completer.isCompleted) completer.complete();
-      },
-      cancelOnError: false,
-    );
+          (observation) {
+            final merged = _merge(_byIp[observation.ip], observation);
+            _byIp[observation.ip] = _decorate(merged, store, typeStore);
+            _emit(isScanning: true);
+          },
+          onError: (_) {},
+          onDone: () {
+            if (!completer.isCompleted) completer.complete();
+          },
+          cancelOnError: false,
+        );
 
     await completer.future;
     _scanCompleter = null;
     _orchestrator = null;
     _emit(isScanning: false);
     if (!_scanWasStopped) {
-      await _recordLatency(network, _byIp.values.toList());
-      await _saveHistory(network, _byIp.values.toList());
+      final devices = _byIp.values.toList();
+      await _recordLatency(network, devices);
+      await _saveHistory(network, devices);
+      await _recordNewDevices(network, devices);
     }
   }
 
@@ -360,6 +404,7 @@ class ScanController extends Notifier<ScanState> {
     // Only record a snapshot when something actually changed, so the history is
     // a meaningful change log rather than thousands of identical hourly dumps.
     if (diff.hasChanges) await _saveHistory(_monitorNetwork!, found);
+    await _recordNewDevices(_monitorNetwork!, found);
     _scheduleNextTick();
   }
 
@@ -384,21 +429,21 @@ class ScanController extends Notifier<ScanState> {
     );
     _monitorSub = orchestrator
         .scan(
-      network,
-      onHostComplete: (done, _) =>
-          state = state.copyWith(backgroundScanned: done),
-    )
+          network,
+          onHostComplete: (done, _) =>
+              state = state.copyWith(backgroundScanned: done),
+        )
         .listen(
-      (observation) {
-        final merged = _merge(byIp[observation.ip], observation);
-        byIp[observation.ip] = _decorate(merged, store, typeStore);
-      },
-      onError: (_) {},
-      onDone: () {
-        if (!completer.isCompleted) completer.complete();
-      },
-      cancelOnError: false,
-    );
+          (observation) {
+            final merged = _merge(byIp[observation.ip], observation);
+            byIp[observation.ip] = _decorate(merged, store, typeStore);
+          },
+          onError: (_) {},
+          onDone: () {
+            if (!completer.isCompleted) completer.complete();
+          },
+          cancelOnError: false,
+        );
     await completer.future;
     _monitorCompleter = null;
     _monitorOrchestrator = null;
@@ -460,6 +505,23 @@ class ScanController extends Notifier<ScanState> {
     ref.invalidate(scanHistoryProvider);
   }
 
+  /// Cross-references [devices] against the durable "seen devices" record for
+  /// [network] and surfaces any genuinely new identities as
+  /// [ScanState.justDiscoveredIdentities] (drives the green row highlight).
+  /// Runs after every scan pass — manual or monitoring — unlike
+  /// [ScanState.lastNewDevices], which only fires during monitoring.
+  Future<void> _recordNewDevices(
+    ScanNetwork network,
+    List<Device> devices,
+  ) async {
+    final db = ref.read(historyDatabaseProvider);
+    final newlyFound = await db.recordNewDevices(network.id, devices);
+    state = state.copyWith(
+      justDiscoveredIdentities: {for (final d in newlyFound) _identityOf(d)},
+    );
+    ref.invalidate(unreadNewDeviceCountProvider(network.id));
+  }
+
   /// Persists a latency reading for every device that answered ICMP this pass
   /// and refreshes any open sparklines.
   Future<void> _recordLatency(ScanNetwork network, List<Device> devices) async {
@@ -473,11 +535,8 @@ class ScanController extends Notifier<ScanState> {
     ref.invalidate(latencyHistoryProvider);
   }
 
-  String _identityOf(Device d) => deviceIdentity(
-        mac: d.mac,
-        hostname: d.hostname,
-        openPorts: d.openPorts,
-      );
+  String _identityOf(Device d) =>
+      deviceIdentity(mac: d.mac, hostname: d.hostname, openPorts: d.openPorts);
 
   /// Combines a new observation for an IP with any existing record: unions the
   /// open ports and discovery sources, and keeps the first non-null hostname /
@@ -535,7 +594,7 @@ class ScanController extends Notifier<ScanState> {
     // randomized/private MACs (e.g. Apple's Private Wi-Fi Address).
     final vendor =
         (device.mac != null ? _oui.vendorFor(device.mac!) : device.vendor) ??
-            inferVendorFromServices(serviceLabels);
+        inferVendorFromServices(serviceLabels);
     final decorated = device.copyWith(vendor: vendor);
     // A manual type override wins over automatic classification.
     final type = types.typeFor(id) ?? _classify(decorated);
@@ -554,12 +613,12 @@ class ScanController extends Notifier<ScanState> {
 
   /// The automatic device-type classification for [device].
   DeviceType _classify(Device device) => classifyDevice(
-        openPorts: device.openPorts.toSet(),
-        vendor: device.vendor,
-        hostname: device.hostname,
-        services: device.services.values.toSet(),
-        isGateway: _gatewayIp != null && device.ip == _gatewayIp,
-      );
+    openPorts: device.openPorts.toSet(),
+    vendor: device.vendor,
+    hostname: device.hostname,
+    services: device.services.values.toSet(),
+    isGateway: _gatewayIp != null && device.ip == _gatewayIp,
+  );
 
   void _emit({bool? isScanning, bool? enriching}) {
     final sorted = _byIp.values.toList()

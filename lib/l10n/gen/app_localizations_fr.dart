@@ -351,6 +351,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get scanHistoryTooltip => 'Historique des analyses';
 
   @override
+  String get newDevicesTooltip => 'Nouveaux appareils';
+
+  @override
+  String get newDevicesDialogTitle => 'Nouveaux appareils';
+
+  @override
+  String get noNewDevicesYet => 'Aucun nouvel appareil pour l\'instant.';
+
+  @override
   String get aboutTooltip => 'À propos';
 
   @override

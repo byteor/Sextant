@@ -110,3 +110,27 @@ String deviceTypeLabel(AppLocalizations l10n, DeviceType type) {
 
 /// The icon for a device, from its classified type.
 IconData deviceIcon(Device device) => deviceTypeIcon(device.deviceType);
+
+/// Formats a timestamp as a compact local date-time, e.g. "Jun 22, 14:30".
+/// Shared by the history screen and the new-devices list so both render
+/// timestamps identically.
+String formatScanTimestamp(DateTime utc) {
+  final t = utc.toLocal();
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final hh = t.hour.toString().padLeft(2, '0');
+  final mm = t.minute.toString().padLeft(2, '0');
+  return '${months[t.month - 1]} ${t.day}, $hh:$mm';
+}

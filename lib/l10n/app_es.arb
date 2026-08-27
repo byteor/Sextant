@@ -103,6 +103,9 @@
   "exportAsCsv": "Exportar como CSV…",
   "exportAsJson": "Exportar como JSON…",
   "scanHistoryTooltip": "Historial de análisis",
+  "newDevicesTooltip": "Dispositivos nuevos",
+  "newDevicesDialogTitle": "Dispositivos nuevos",
+  "noNewDevicesYet": "Aún no hay dispositivos nuevos.",
   "aboutTooltip": "Acerca de",
   "settingsTooltip": "Configuración",
 

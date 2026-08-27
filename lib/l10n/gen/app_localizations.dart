@@ -650,6 +650,24 @@ abstract class AppLocalizations {
   /// **'Scan history'**
   String get scanHistoryTooltip;
 
+  /// No description provided for @newDevicesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New devices'**
+  String get newDevicesTooltip;
+
+  /// No description provided for @newDevicesDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Devices'**
+  String get newDevicesDialogTitle;
+
+  /// No description provided for @noNewDevicesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No new devices yet.'**
+  String get noNewDevicesYet;
+
   /// No description provided for @aboutTooltip.
   ///
   /// In en, this message translates to:

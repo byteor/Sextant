@@ -21,6 +21,7 @@ import '../version.dart';
 import 'about_dialog.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
+import 'new_devices_dialog.dart';
 import 'settings_screen.dart';
 
 class ScanScreen extends ConsumerWidget {
@@ -133,7 +134,11 @@ class ScanScreen extends ConsumerWidget {
           _StatusBar(),
           const Divider(height: 1),
           Expanded(
-            child: _DeviceTable(devices: scan.devices, isBusy: scan.isBusy),
+            child: _DeviceTable(
+              devices: scan.devices,
+              isBusy: scan.isBusy,
+              newIdentities: scan.justDiscoveredIdentities,
+            ),
           ),
         ],
       ),
@@ -245,6 +250,10 @@ class _Toolbar extends ConsumerWidget {
             MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
           ),
         ),
+        if (effective != null) ...[
+          const SizedBox(width: 8),
+          _NewDevicesButton(networkId: effective.id),
+        ],
         const Spacer(),
         IconButton(
           tooltip: l10n.aboutTooltip,
@@ -259,6 +268,35 @@ class _Toolbar extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Toolbar button showing how many devices on [networkId] were newly
+/// discovered and haven't been acknowledged yet (a persisted, cross-session
+/// count — see `HistoryDatabase.recordNewDevices`). Opens [NewDevicesDialog],
+/// which marks them acknowledged as soon as it's opened, clearing the badge.
+class _NewDevicesButton extends ConsumerWidget {
+  const _NewDevicesButton({required this.networkId});
+
+  final String networkId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final count = ref.watch(unreadNewDeviceCountProvider(networkId)).value ?? 0;
+    Widget badged(Widget icon) =>
+        Badge(label: Text('$count'), isLabelVisible: count > 0, child: icon);
+
+    return IconButton(
+      tooltip: l10n.newDevicesTooltip,
+      isSelected: count > 0,
+      icon: badged(const Icon(Icons.fiber_new_outlined)),
+      selectedIcon: badged(const Icon(Icons.fiber_new)),
+      onPressed: () => showDialog<void>(
+        context: context,
+        builder: (_) => NewDevicesDialog(networkId: networkId),
+      ),
     );
   }
 }
@@ -400,10 +438,18 @@ ColumnMinWidths _headerMinWidths(
 /// header-label minimum and the row still doesn't fit, this switches to
 /// horizontal scrolling rather than clipping or overlapping content.
 class _DeviceTable extends ConsumerWidget {
-  const _DeviceTable({required this.devices, required this.isBusy});
+  const _DeviceTable({
+    required this.devices,
+    required this.isBusy,
+    required this.newIdentities,
+  });
 
   final List<Device> devices;
   final bool isBusy;
+
+  /// Identities highlighted as "just discovered" this scan — see
+  /// [ScanState.justDiscoveredIdentities].
+  final Set<String> newIdentities;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -433,6 +479,7 @@ class _DeviceTable extends ConsumerWidget {
                   widths: widths,
                   device: devices[i],
                   tinted: i.isOdd,
+                  newIdentities: newIdentities,
                 ),
               );
 
@@ -577,6 +624,7 @@ class DeviceRow extends ConsumerWidget {
     required this.widths,
     required this.device,
     this.tinted = false,
+    this.newIdentities = const {},
   });
 
   final EffectiveColumnWidths widths;
@@ -584,6 +632,11 @@ class DeviceRow extends ConsumerWidget {
 
   /// Whether this row gets the alternating (zebra) background tint.
   final bool tinted;
+
+  /// Identities highlighted as "just discovered" this scan — see
+  /// [ScanState.justDiscoveredIdentities]. Takes priority over [tinted]'s
+  /// zebra striping when this row's device is in the set.
+  final Set<String> newIdentities;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -752,10 +805,20 @@ class DeviceRow extends ConsumerWidget {
       ),
     );
 
+    final isNew = newIdentities.contains(identity);
+    final Color background;
+    if (isNew) {
+      background = Colors.green.withValues(alpha: 0.15);
+    } else if (tinted) {
+      background = theme.colorScheme.surfaceContainerHighest.withValues(
+        alpha: 0.4,
+      );
+    } else {
+      background = Colors.transparent;
+    }
+
     return Material(
-      color: tinted
-          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
-          : Colors.transparent,
+      color: background,
       child: InkWell(
         onSecondaryTapDown: (d) => _showMenu(context, ref, d.globalPosition),
         onLongPress: () => _showMenu(context, ref, null),
