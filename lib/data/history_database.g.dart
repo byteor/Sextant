@@ -986,7 +986,16 @@ class $$ScansTableTableManager
                 devicesJson: devicesJson,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ScansTable, Scan>(table),
+                  BaseReferences<_$HistoryDatabase, $ScansTable, Scan>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1185,7 +1194,16 @@ class $$LatencySamplesTableTableManager
                 rttMs: rttMs,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$LatencySamplesTable, LatencySample>(table),
+                  BaseReferences<
+                    _$HistoryDatabase,
+                    $LatencySamplesTable,
+                    LatencySample
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
