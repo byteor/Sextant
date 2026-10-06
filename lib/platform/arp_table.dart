@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'arp_sysctl.dart';
+
 /// Matches BSD/macOS/Linux `arp -an` lines, e.g.
 /// `? (192.168.1.1) at ac:de:48:00:11:22 on en0 ifscope [ethernet]`.
 final _bsdArpLine = RegExp(r'\(([0-9.]+)\) at ([0-9a-fA-F:]+)');
@@ -57,6 +59,13 @@ class ArpResolver {
   Future<Map<String, String>> lookup() async {
     if (!(Platform.isMacOS || Platform.isLinux || Platform.isWindows)) {
       return const {};
+    }
+    // On macOS, read the kernel table in-process: since macOS 26 a spawned
+    // `arp` can return an empty table to a GUI app even with Local Network
+    // access granted, while the app's own sysctl call sees the entries.
+    if (Platform.isMacOS) {
+      final viaSysctl = readArpViaSysctl();
+      if (viaSysctl != null && viaSysctl.isNotEmpty) return viaSysctl;
     }
     try {
       final args = buildArpArgs(isWindows: Platform.isWindows);
