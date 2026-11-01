@@ -39,6 +39,23 @@ Map<String, String> parseArpOutput(String output) {
   return table;
 }
 
+/// Parses the Linux kernel's `/proc/net/arp` table (header row, then
+/// `IP  HWtype  Flags  HWaddress  Mask  Device`) into IPv4 -> MAC. Entries that
+/// aren't complete (flag 0x2 unset) or have an all-zero MAC are skipped.
+Map<String, String> parseProcNetArp(String content) {
+  final table = <String, String>{};
+  for (final line in const LineSplitter().convert(content).skip(1)) {
+    final cols = line.trim().split(RegExp(r'\s+'));
+    if (cols.length < 4) continue;
+    final flags = int.tryParse(cols[2].replaceFirst('0x', ''), radix: 16);
+    if (flags == null || flags & 0x2 == 0) continue;
+    final mac = normalizeMac(cols[3]);
+    if (mac == '00:00:00:00:00:00') continue;
+    table[cols[0]] = mac;
+  }
+  return table;
+}
+
 /// Normalizes a MAC address to lower-case, colon-separated, two-digit octets
 /// (e.g. `a4:83:e7:2b:0c:9` -> `a4:83:e7:2b:0c:09`,
 /// `00-14-22-01-23-45` -> `00:14:22:01:23:45`).
@@ -51,12 +68,22 @@ String normalizeMac(String mac) {
 
 /// Reads the system ARP cache to resolve IPv4 addresses to MAC addresses.
 ///
-/// Works on desktop (macOS/Linux/Windows). On mobile the ARP table is not
-/// accessible without root, so [lookup] returns an empty map there.
+/// Works on desktop (macOS/Linux/Windows). On Android it reads
+/// `/proc/net/arp` directly, which newer Android versions may deny to apps (the
+/// result is then simply empty); iOS has no access, so it returns an empty map.
 class ArpResolver {
   const ArpResolver();
 
   Future<Map<String, String>> lookup() async {
+    if (Platform.isAndroid) {
+      // Read the file in-process: spawning `arp` would fork the app, and Dart
+      // runs on Android's main thread.
+      try {
+        return parseProcNetArp(await File('/proc/net/arp').readAsString());
+      } on FileSystemException {
+        return const {};
+      }
+    }
     if (!(Platform.isMacOS || Platform.isLinux || Platform.isWindows)) {
       return const {};
     }

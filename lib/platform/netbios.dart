@@ -27,10 +27,23 @@ Uint8List buildNbstatRequest({int transactionId = 0x4b41}) {
   return b.toBytes();
 }
 
-/// Parses an NBSTAT response and returns the host's unique (non-group)
-/// workstation name (suffix 0x00), or null if none is present / the packet is
-/// malformed. Handles both a full RR name and a compression pointer.
-String? parseNbstatResponse(Uint8List data) {
+/// What an NBSTAT reply reveals about a host: its unique workstation name and
+/// the MAC address carried in the reply's trailing "unit ID" field.
+class NbstatInfo {
+  const NbstatInfo({this.name, this.mac});
+
+  final String? name;
+
+  /// Lower-case colon-separated MAC, or null when the host reports none.
+  final String? mac;
+}
+
+/// Parses an NBSTAT response into the host's unique (non-group) workstation
+/// name (suffix 0x00) and its MAC address (the 6-byte unit ID that follows the
+/// name table — Windows and Samba fill it in; some stacks send all zeros,
+/// which is treated as absent). Returns null if the packet is malformed or
+/// carries neither. Handles both a full RR name and a compression pointer.
+NbstatInfo? parseNbstat(Uint8List data) {
   var off = 12; // skip the 12-byte header
   if (off >= data.length) return null;
 
@@ -49,37 +62,52 @@ String? parseNbstatResponse(Uint8List data) {
 
   final numNames = data[off];
   off += 1;
+  String? hostName;
   for (var i = 0; i < numNames; i++) {
     if (off + 18 > data.length) break;
     final name = String.fromCharCodes(data.sublist(off, off + 15)).trim();
     final suffix = data[off + 15];
     final flags = (data[off + 16] << 8) | data[off + 17];
     final isGroup = (flags & 0x8000) != 0;
-    if (suffix == 0x00 && !isGroup && name.isNotEmpty) return name;
+    if (hostName == null && suffix == 0x00 && !isGroup && name.isNotEmpty) {
+      hostName = name;
+    }
     off += 18;
   }
-  return null;
+
+  String? mac;
+  if (off + 6 <= data.length) {
+    final bytes = data.sublist(off, off + 6);
+    if (bytes.any((b) => b != 0)) {
+      mac = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(':');
+    }
+  }
+  if (hostName == null && mac == null) return null;
+  return NbstatInfo(name: hostName, mac: mac);
 }
 
-/// Resolves NetBIOS names by sending an NBSTAT query to a host's UDP 137 and
-/// parsing the reply. Best-effort: returns null on timeout or any error.
+/// The unique workstation name from an NBSTAT response, or null.
+String? parseNbstatResponse(Uint8List data) => parseNbstat(data)?.name;
+
+/// Queries a host's NetBIOS name and MAC by sending an NBSTAT query to its UDP
+/// 137 and parsing the reply. Best-effort: returns null on timeout or any error.
 class NetbiosResolver {
   const NetbiosResolver({this.timeout = const Duration(seconds: 1)});
 
   final Duration timeout;
 
-  Future<String?> queryName(InternetAddress host) async {
+  Future<NbstatInfo?> queryInfo(InternetAddress host) async {
     RawDatagramSocket? socket;
     try {
       socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      final completer = Completer<String?>();
+      final completer = Completer<NbstatInfo?>();
       socket.listen(
         (event) {
           if (event != RawSocketEvent.read) return;
           final dg = socket!.receive();
           if (dg == null || dg.address.address != host.address) return;
           if (!completer.isCompleted) {
-            completer.complete(parseNbstatResponse(dg.data));
+            completer.complete(parseNbstat(dg.data));
           }
         },
         // A datagram to a powered-off host can surface an async "host is down"

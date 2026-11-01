@@ -1,11 +1,16 @@
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sextant/data/device_identity.dart';
+import 'package:sextant/data/history_database.dart';
 import 'package:sextant/l10n/gen/app_localizations.dart';
 import 'package:sextant/l10n/supported_locales.dart';
 import 'package:sextant/model/device.dart';
+import 'package:sextant/model/network_info.dart';
+import 'package:sextant/scan/ipv4_subnet.dart';
 import 'package:sextant/state/column_widths.dart';
 import 'package:sextant/state/providers.dart';
 import 'package:sextant/state/scan_state.dart';
@@ -20,15 +25,59 @@ class _FixedScanController extends ScanController {
   ScanState build() => _state;
 }
 
-Device _dev(String ip) {
+class _SpyScanController extends _FixedScanController {
+  _SpyScanController(super.state, {this.result});
+  Device? startedDevice;
+  ScanNetwork? startedNetwork;
+
+  /// What [startDeepPortScan] resolves with — null (cancelled/blocked), an
+  /// empty list (completed, nothing found), or a populated list (completed,
+  /// found these ports). Defaults to null to match this spy's original
+  /// behavior for callers that don't care about the completion summary.
+  final List<int>? result;
+
+  @override
+  Future<List<int>?> startDeepPortScan(
+    Device device,
+    ScanNetwork network,
+  ) async {
+    startedDevice = device;
+    startedNetwork = network;
+    return result;
+  }
+}
+
+class _SpyCancelScanController extends _FixedScanController {
+  _SpyCancelScanController(super.state);
+  bool cancelled = false;
+
+  @override
+  void cancelDeepPortScan() {
+    cancelled = true;
+  }
+}
+
+Device _dev(String ip, {String? mac}) {
   final t = DateTime.utc(2026, 1, 1);
-  return Device(ip: ip, firstSeen: t, lastSeen: t);
+  return Device(ip: ip, mac: mac, firstSeen: t, lastSeen: t);
+}
+
+ScanNetwork _network() {
+  final addr = InternetAddress('192.168.1.10');
+  return ScanNetwork(
+    interfaceName: 'en0',
+    displayName: 'Wi-Fi',
+    address: addr,
+    subnet: Ipv4Subnet.fromHostAndPrefix(addr, 24),
+  );
 }
 
 Future<void> _pump(
   WidgetTester tester,
   List<Device> devices, {
   ScanState? state,
+  List<ScanNetwork> networks = const [],
+  HistoryDatabase? historyDatabase,
 }) async {
   // The device table's fixed-width columns (plus the toolbar) need more
   // horizontal space than flutter_test's default 800x600 surface, which
@@ -48,20 +97,26 @@ Future<void> _pump(
   final tempDir = await tester.runAsync(
     () => Directory.systemTemp.createTemp('sextant_scan_screen_test'),
   );
-  addTearDown(() => tester.runAsync(() async {
-        if (await tempDir!.exists()) await tempDir.delete(recursive: true);
-      }));
+  addTearDown(
+    () => tester.runAsync(() async {
+      if (await tempDir!.exists()) await tempDir.delete(recursive: true);
+    }),
+  );
 
-  final container = ProviderContainer(overrides: [
-    scanControllerProvider.overrideWith(
-      () => _FixedScanController(state ?? ScanState(devices: devices)),
-    ),
-    networksProvider.overrideWith((ref) async => []),
-    // settingsProvider also reads the app-support directory via
-    // path_provider — overridden so opening the Settings screen
-    // (pushed on top of this widget tree) resolves deterministically.
-    settingsFileDirProvider.overrideWith((ref) async => tempDir!.path),
-  ]);
+  final container = ProviderContainer(
+    overrides: [
+      scanControllerProvider.overrideWith(
+        () => _FixedScanController(state ?? ScanState(devices: devices)),
+      ),
+      networksProvider.overrideWith((ref) async => networks),
+      // settingsProvider also reads the app-support directory via
+      // path_provider — overridden so opening the Settings screen
+      // (pushed on top of this widget tree) resolves deterministically.
+      settingsFileDirProvider.overrideWith((ref) async => tempDir!.path),
+      if (historyDatabase != null)
+        historyDatabaseProvider.overrideWithValue(historyDatabase),
+    ],
+  );
   addTearDown(container.dispose);
   await tester.runAsync(() => container.read(settingsProvider.future));
 
@@ -95,22 +150,27 @@ void main() {
   });
 
   group('ScanState.backgroundProgress', () {
-    test('is 0 when the host count is not yet known (avoids divide-by-zero)',
-        () {
-      expect(const ScanState(backgroundTotal: 0).backgroundProgress, 0);
-    });
+    test(
+      'is 0 when the host count is not yet known (avoids divide-by-zero)',
+      () {
+        expect(const ScanState(backgroundTotal: 0).backgroundProgress, 0);
+      },
+    );
 
     test('is scanned/total once the host count is known', () {
       expect(
-        const ScanState(backgroundScanned: 3, backgroundTotal: 12)
-            .backgroundProgress,
+        const ScanState(
+          backgroundScanned: 3,
+          backgroundTotal: 12,
+        ).backgroundProgress,
         0.25,
       );
     });
   });
 
-  testWidgets('the version/About/Settings group is flush to the right edge',
-      (tester) async {
+  testWidgets('the version/About/Settings group is flush to the right edge', (
+    tester,
+  ) async {
     await _pump(tester, []);
     // The Settings button is the right-most toolbar item; it must sit flush
     // against the toolbar's right edge — only the AppBar's titleSpacing (16)
@@ -122,8 +182,9 @@ void main() {
     expect(1400 - settingsRight, lessThan(40));
   });
 
-  testWidgets('a background monitor re-scan shows a determinate progress bar',
-      (tester) async {
+  testWidgets('a background monitor re-scan shows a determinate progress bar', (
+    tester,
+  ) async {
     await _pump(
       tester,
       [],
@@ -140,11 +201,15 @@ void main() {
       matching: find.byType(LinearProgressIndicator),
     );
     expect(bar, findsOneWidget);
-    expect(tester.widget<LinearProgressIndicator>(bar).value, closeTo(0.25, 1e-9));
+    expect(
+      tester.widget<LinearProgressIndicator>(bar).value,
+      closeTo(0.25, 1e-9),
+    );
   });
 
-  testWidgets('an idle (non-scanning) state shows no progress bar',
-      (tester) async {
+  testWidgets('an idle (non-scanning) state shows no progress bar', (
+    tester,
+  ) async {
     await _pump(tester, []);
     expect(
       find.descendant(
@@ -155,7 +220,9 @@ void main() {
     );
   });
 
-  testWidgets('there is no "Network map" button in the toolbar', (tester) async {
+  testWidgets('there is no "Network map" button in the toolbar', (
+    tester,
+  ) async {
     await _pump(tester, []);
 
     expect(find.byTooltip('Network map'), findsNothing);
@@ -197,19 +264,551 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the toolbar shows the version and an About button',
-      (tester) async {
+  testWidgets('the toolbar shows the version and an About button', (
+    tester,
+  ) async {
     await _pump(tester, []);
 
     expect(find.byTooltip('About'), findsOneWidget);
     expect(find.textContaining('1.'), findsOneWidget);
   });
 
-  testWidgets('the toolbar has a Settings button that opens SettingsScreen',
-      (tester) async {
+  testWidgets('the toolbar has a Settings button that opens SettingsScreen', (
+    tester,
+  ) async {
     await _pump(tester, []);
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsWidgets); // AppBar title + tooltip text
+  });
+
+  group('the "just discovered" row highlight', () {
+    testWidgets('a device in justDiscoveredIdentities gets a green row '
+        'background', (tester) async {
+      final device = _dev('10.0.0.5', mac: 'aa:aa:aa:aa:aa:aa');
+      final identity = deviceIdentity(mac: device.mac);
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          justDiscoveredIdentities: {identity},
+        ),
+      );
+
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(DeviceRow),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, Colors.green.withValues(alpha: 0.15));
+    });
+
+    testWidgets('a device not in justDiscoveredIdentities keeps its normal '
+        'background', (tester) async {
+      final device = _dev('10.0.0.6', mac: 'bb:bb:bb:bb:bb:bb');
+      await _pump(tester, [], state: ScanState(devices: [device]));
+
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(DeviceRow),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, Colors.transparent);
+    });
+  });
+
+  group('the "new devices" toolbar button', () {
+    late HistoryDatabase historyDb;
+
+    setUp(() => historyDb = HistoryDatabase(NativeDatabase.memory()));
+    tearDown(() => historyDb.close());
+
+    testWidgets('is hidden when no network is selected', (tester) async {
+      await _pump(tester, []); // no networks -> no selected network
+
+      expect(find.byTooltip('New devices'), findsNothing);
+    });
+
+    testWidgets('shows no badge when there are no unacknowledged new '
+        'devices', (tester) async {
+      final network = _network();
+      await _pump(tester, [], networks: [network], historyDatabase: historyDb);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byTooltip('New devices'),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.isSelected, isFalse);
+    });
+
+    testWidgets('shows the unread count, and opening the dialog '
+        'acknowledges it', (tester) async {
+      final network = _network();
+      final networkId = network.id;
+      // First scan establishes the baseline; the second reports 'bb' as new.
+      await historyDb.recordNewDevices(networkId, [
+        _dev('10.0.0.1', mac: 'aa:aa:aa:aa:aa:aa'),
+      ]);
+      await historyDb.recordNewDevices(networkId, [
+        _dev('10.0.0.1', mac: 'aa:aa:aa:aa:aa:aa'),
+        _dev('10.0.0.2', mac: 'bb:bb:bb:bb:bb:bb'),
+      ]);
+      expect(await historyDb.unacknowledgedCount(networkId), 1);
+
+      await _pump(tester, [], networks: [network], historyDatabase: historyDb);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('1'), findsOneWidget);
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byTooltip('New devices'),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.isSelected, isTrue);
+
+      await tester.tap(find.byTooltip('New devices'));
+      await tester.pumpAndSettle();
+
+      // The entry's title is its displayName, which for a hostname-less
+      // device falls back to the IP — an exact match distinguishes it from
+      // the subtitle's "10.0.0.2 · <date>" text, which also contains it.
+      expect(find.text('10.0.0.2'), findsOneWidget);
+
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      expect(await historyDb.unacknowledgedCount(networkId), 0);
+    });
+  });
+
+  group('the "scan all ports" context menu item', () {
+    testWidgets('appears when long-pressing a device row', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await _pump(tester, [device]);
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Scan all ports (65,535)…'), findsOneWidget);
+    });
+
+    testWidgets('tapping it while a regular scan is running does not open '
+        'the confirm dialog', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await _pump(tester, [
+        device,
+      ], state: ScanState(devices: [device], isScanning: true));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Scan all 65,535 ports on'), findsNothing);
+    });
+
+    testWidgets('confirming the dialog starts a deep scan on the right '
+        'device and network', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      final network = _network();
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyScanController(ScanState(devices: [device])),
+          ),
+          networksProvider.overrideWith((ref) async => [network]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Scan all 65,535 ports on 10.0.0.7?'), findsOneWidget);
+
+      await tester.tap(find.text('Scan'));
+      await tester.pumpAndSettle();
+
+      final spy =
+          container.read(scanControllerProvider.notifier) as _SpyScanController;
+      expect(spy.startedDevice?.ip, '10.0.0.7');
+      expect(spy.startedNetwork, same(network));
+    });
+
+    testWidgets('cancelling the confirm dialog does not start a scan', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      final network = _network();
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyScanController(ScanState(devices: [device])),
+          ),
+          networksProvider.overrideWith((ref) async => [network]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      final spy =
+          container.read(scanControllerProvider.notifier) as _SpyScanController;
+      expect(spy.startedDevice, isNull);
+    });
+  });
+
+  group('the deep-scan completion snackbar', () {
+    /// Drives the confirm-and-scan flow through to completion against a
+    /// [_SpyScanController] whose `startDeepPortScan` resolves with
+    /// [result], returning the container so callers can inspect it further.
+    Future<ProviderContainer> runToCompletion(
+      WidgetTester tester,
+      Device device,
+      List<int>? result,
+    ) async {
+      final network = _network();
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyScanController(
+              ScanState(devices: [device]),
+              result: result,
+            ),
+          ),
+          networksProvider.overrideWith((ref) async => [network]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.longPress(find.byType(DeviceRow));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan all ports (65,535)…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan'));
+      await tester.pumpAndSettle();
+
+      return container;
+    }
+
+    testWidgets('a null result (cancelled or blocked) shows no completion '
+        'snackbar', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await runToCompletion(tester, device, null);
+
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('an empty result shows the "no open ports found" snackbar', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await runToCompletion(tester, device, const []);
+
+      expect(
+        find.text(
+          'Deep scan of 10.0.0.7 complete — no additional open ports found.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a non-empty result shows the found ports, pluralized, in '
+        'the completion snackbar', (tester) async {
+      final device = _dev('10.0.0.7', mac: 'cc:cc:cc:cc:cc:cc');
+      await runToCompletion(tester, device, const [80, 443]);
+
+      expect(
+        find.text(
+          'Deep scan of 10.0.0.7 complete: 2 open ports found (80, 443)',
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('the toolbar during a deep scan', () {
+    late HistoryDatabase historyDb;
+
+    setUp(() => historyDb = HistoryDatabase(NativeDatabase.memory()));
+    tearDown(() => historyDb.close());
+
+    const monitoringTooltip =
+        'Live monitoring — re-scan and alert on new devices';
+
+    /// The SCAN button (shown whenever the state isn't [ScanState.isBusy],
+    /// which a deep scan never is — it has its own flag).
+    FilledButton scanButton(WidgetTester tester) =>
+        tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'SCAN'));
+
+    IconButton monitoringButton(WidgetTester tester) => tester.widget<IconButton>(
+      find
+          .ancestor(
+            of: find.byTooltip(monitoringTooltip),
+            matching: find.byType(IconButton),
+          )
+          .first,
+    );
+
+    testWidgets('SCAN and the monitoring toggle are enabled when idle', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        [],
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      expect(scanButton(tester).onPressed, isNotNull);
+      expect(monitoringButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('SCAN is disabled while a deep scan is running', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.9', mac: 'ee:ee:ee:ee:ee:ee');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: device.ip,
+          deepScanCompleted: 10,
+          deepScanTotal: 65535,
+        ),
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      // Still visible (a deep scan doesn't set isBusy, so the STOP button
+      // isn't swapped in) but not actionable.
+      expect(scanButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('the monitoring toggle is disabled while a deep scan is '
+        'running', (tester) async {
+      final device = _dev('10.0.0.9', mac: 'ee:ee:ee:ee:ee:ee');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: device.ip,
+          deepScanCompleted: 10,
+          deepScanTotal: 65535,
+        ),
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      expect(monitoringButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('the monitoring toggle is still disabled during a deep scan '
+        'when monitoring is already on', (tester) async {
+      final device = _dev('10.0.0.9', mac: 'ee:ee:ee:ee:ee:ee');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isMonitoring: true,
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: device.ip,
+          deepScanCompleted: 10,
+          deepScanTotal: 65535,
+        ),
+        networks: [_network()],
+        historyDatabase: historyDb,
+      );
+
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byTooltip('Stop live monitoring'),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.onPressed, isNull);
+    });
+  });
+
+  group('deep scan progress display', () {
+    testWidgets('the deep-scanned device\'s row shows a progress ring '
+        'instead of its status dot', (tester) async {
+      final device = _dev('10.0.0.8', mac: 'dd:dd:dd:dd:dd:dd');
+      final identity = deviceIdentity(mac: device.mac);
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: identity,
+          deepScanIp: device.ip,
+          deepScanCompleted: 100,
+          deepScanTotal: 65535,
+        ),
+      );
+
+      expect(
+        find.descendant(
+          of: find.byType(DeviceRow),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the status bar shows deep-scan progress and a cancel '
+        'button while running', (tester) async {
+      final device = _dev('10.0.0.8', mac: 'dd:dd:dd:dd:dd:dd');
+      await _pump(
+        tester,
+        [],
+        state: ScanState(
+          devices: [device],
+          isDeepScanning: true,
+          deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+          deepScanIp: '10.0.0.8',
+          deepScanCompleted: 100,
+          deepScanTotal: 65535,
+        ),
+      );
+
+      expect(find.text('Deep-scanning 10.0.0.8 — 100 / 65535'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    testWidgets('the status bar shows no deep-scan line when not deep '
+        'scanning', (tester) async {
+      await _pump(tester, []);
+
+      expect(find.textContaining('Deep-scanning'), findsNothing);
+    });
+
+    testWidgets('tapping Cancel in the status bar calls cancelDeepPortScan', (
+      tester,
+    ) async {
+      final device = _dev('10.0.0.8', mac: 'dd:dd:dd:dd:dd:dd');
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final container = ProviderContainer(
+        overrides: [
+          scanControllerProvider.overrideWith(
+            () => _SpyCancelScanController(
+              ScanState(
+                devices: [device],
+                isDeepScanning: true,
+                deepScanDeviceIdentity: deviceIdentity(mac: device.mac),
+                deepScanIp: device.ip,
+                deepScanCompleted: 10,
+                deepScanTotal: 65535,
+              ),
+            ),
+          ),
+          networksProvider.overrideWith((ref) async => []),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: kSupportedLocales,
+            home: const ScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Cancel'));
+
+      final spy =
+          container.read(scanControllerProvider.notifier)
+              as _SpyCancelScanController;
+      expect(spy.cancelled, isTrue);
+    });
   });
 }

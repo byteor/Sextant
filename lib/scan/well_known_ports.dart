@@ -41,3 +41,10 @@ const Map<int, String> kWellKnownPorts = {
 
 /// The ports probed by default, ascending.
 List<int> get kDefaultScanPorts => kWellKnownPorts.keys.toList()..sort();
+
+/// The regular scan's default ports plus every [extraPorts] entry, sorted
+/// and deduplicated — used to fold in ports found via a deep scan (see
+/// `HistoryDatabase.allExtraPorts`) so they keep showing as open on every
+/// future regular scan.
+List<int> mergedScanPorts(List<int> extraPorts) =>
+    (<int>{...kDefaultScanPorts, ...extraPorts}.toList()..sort());

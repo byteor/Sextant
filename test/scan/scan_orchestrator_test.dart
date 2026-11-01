@@ -26,7 +26,7 @@ class _SilentMdns extends MdnsDiscovery {
 class _SilentNetbios extends NetbiosResolver {
   const _SilentNetbios();
   @override
-  Future<String?> queryName(InternetAddress host) async => null;
+  Future<NbstatInfo?> queryInfo(InternetAddress host) async => null;
 }
 
 class _SilentSsdp extends SsdpDiscovery {
@@ -67,6 +67,7 @@ class _TrackingTcpHostScanner extends TcpHostScanner {
     List<InternetAddress> hosts,
     List<int> ports, {
     HostProgress? onHostComplete,
+    HostProgress? onProbeComplete,
     bool Function()? isCancelled,
   }) {
     called = true;
@@ -88,7 +89,7 @@ class _TrackingMdns extends MdnsDiscovery {
 class _TrackingNetbios extends NetbiosResolver {
   bool called = false;
   @override
-  Future<String?> queryName(InternetAddress host) async {
+  Future<NbstatInfo?> queryInfo(InternetAddress host) async {
     called = true;
     return null;
   }
@@ -218,7 +219,7 @@ void main() {
     expect(tracker.called, isFalse);
   });
 
-  test('netbiosEnabled: false never calls NetbiosResolver.queryName()',
+  test('netbiosEnabled: false never calls NetbiosResolver.queryInfo()',
       () async {
     final tracker = _TrackingNetbios();
     final orchestrator = ScanOrchestrator(
