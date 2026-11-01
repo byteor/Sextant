@@ -7,6 +7,7 @@ import '../model/discovery_source.dart';
 import '../model/network_info.dart';
 import '../platform/arp_table.dart';
 import '../platform/icmp_pinger.dart';
+import '../platform/multicast_lock.dart';
 import '../platform/netbios.dart';
 import 'banner_grabber.dart';
 import 'ipv4_subnet.dart';
@@ -109,6 +110,8 @@ class ScanOrchestrator {
   final bool mdnsEnabled;
   final bool netbiosEnabled;
   final bool ssdpEnabled;
+
+  static const _multicast = MulticastLock();
 
   bool _cancelled = false;
 
@@ -258,6 +261,7 @@ class ScanOrchestrator {
     ScanNetwork network,
     DateTime now,
   ) async {
+    await _multicast.acquire();
     try {
       await for (final obs in _mdns.discover()) {
         if (_cancelled || controller.isClosed) break;
@@ -272,6 +276,7 @@ class ScanOrchestrator {
           Device(
             ip: obs.ip,
             hostname: obs.name.isEmpty ? null : obs.name,
+            mac: obs.mac,
             services: {obs.port: obs.serviceLabel},
             discoveredBy: {DiscoverySource.mdns},
             firstSeen: now,
@@ -282,6 +287,8 @@ class ScanOrchestrator {
       }
     } catch (_) {
       // mDNS is best-effort; never let it break a scan.
+    } finally {
+      await _multicast.release();
     }
   }
 
@@ -290,6 +297,7 @@ class ScanOrchestrator {
     ScanNetwork network,
     DateTime now,
   ) async {
+    await _multicast.acquire();
     try {
       await for (final obs in _ssdp.discover()) {
         if (_cancelled || controller.isClosed) break;
@@ -316,6 +324,8 @@ class ScanOrchestrator {
       }
     } catch (_) {
       // SSDP is best-effort; never let it break a scan.
+    } finally {
+      await _multicast.release();
     }
   }
 
@@ -331,12 +341,15 @@ class ScanOrchestrator {
       while (next < hosts.length) {
         if (_cancelled) break;
         final host = hosts[next++];
-        final name = await _netbios.queryName(host);
-        if (name == null || controller.isClosed) continue;
+        final info = await _netbios.queryInfo(host);
+        if (info == null || controller.isClosed) continue;
         controller.add(
           Device(
             ip: host.address,
-            hostname: name,
+            hostname: info.name,
+            // The NBSTAT unit ID is the host's MAC — a login-free source of
+            // MACs where the ARP table is off limits (Android).
+            mac: info.mac,
             discoveredBy: {DiscoverySource.netbios},
             firstSeen: now,
             lastSeen: now,

@@ -62,4 +62,20 @@ Interface: 192.168.1.5 --- 0x9
       expect(buildArpArgs(isWindows: false), ['-an']);
     });
   });
+
+  group('parseProcNetArp', () {
+    test('parses complete entries and skips incomplete or zero-MAC ones', () {
+      const table = '''
+IP address       HW type     Flags       HW address            Mask     Device
+192.168.4.25     0x1         0x2         00:9d:6b:be:ba:12     *        wlan0
+192.168.4.30     0x1         0x0         00:00:00:00:00:00     *        wlan0
+192.168.4.31     0x1         0x2         00:00:00:00:00:00     *        wlan0
+192.168.4.20     0x1         0x6         1C:E8:9E:B1:86:DB     *        wlan0
+''';
+      expect(parseProcNetArp(table), {
+        '192.168.4.25': '00:9d:6b:be:ba:12',
+        '192.168.4.20': '1c:e8:9e:b1:86:db',
+      });
+    });
+  });
 }

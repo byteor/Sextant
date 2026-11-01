@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/services.dart';
+
+import 'android_channel.dart';
+
 /// Builds the platform-appropriate arguments for the system `ping` binary to
 /// send a single echo request to [host] with the given [timeoutMs].
 ///
@@ -53,6 +57,7 @@ class IcmpPinger {
 
   /// Pings [host] once, returning whether it replied and the reply TTL.
   Future<PingResult> ping(InternetAddress host) async {
+    if (Platform.isAndroid) return _pingAndroid(host);
     final args = buildPingArgs(
       host.address,
       isWindows: Platform.isWindows,
@@ -71,6 +76,27 @@ class IcmpPinger {
     } on TimeoutException {
       return PingResult(host, alive: false);
     } on ProcessException {
+      return PingResult(host, alive: false);
+    }
+  }
+
+  /// Android runs Dart on the platform (main) thread, and `Process.run` forks
+  /// and blocks on a pipe read until the child has started — about a thousand
+  /// of those per /22 sweep froze all input and triggered "not responding"
+  /// dialogs. The host activity pings from a background thread pool instead
+  /// (`InetAddress.isReachable`, which uses unprivileged ICMP sockets).
+  Future<PingResult> _pingAndroid(InternetAddress host) async {
+    try {
+      final rtt = await androidNetworkChannel.invokeMethod<double>('ping', {
+        'host': host.address,
+        'timeoutMs': timeout.inMilliseconds,
+      });
+      return rtt == null || rtt < 0
+          ? PingResult(host, alive: false)
+          : PingResult(host, alive: true, rttMs: rtt);
+    } on PlatformException {
+      return PingResult(host, alive: false);
+    } on MissingPluginException {
       return PingResult(host, alive: false);
     }
   }

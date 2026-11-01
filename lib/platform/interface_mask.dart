@@ -1,5 +1,9 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
+import 'android_channel.dart';
+
 final _ifconfigMask = RegExp(r'netmask\s+0x([0-9a-fA-F]{8})');
 final _ipCidr = RegExp(r'inet\s+[0-9.]+/(\d{1,2})');
 
@@ -42,14 +46,30 @@ class InterfaceMaskResolver {
         final r = await Process.run('ifconfig', [interfaceName]);
         return r.exitCode == 0 ? prefixFromIfconfig(r.stdout as String) : null;
       }
-      if (Platform.isLinux) {
-        final r = await Process.run(
-          'ip',
-          ['-o', '-f', 'inet', 'addr', 'show', interfaceName],
+      if (Platform.isAndroid) {
+        // The `ip` binary isn't usable from the app sandbox; ask the host
+        // activity (java.net.NetworkInterface) instead.
+        return await androidNetworkChannel.invokeMethod<int>(
+          'ipv4PrefixLength',
+          interfaceName,
         );
+      }
+      if (Platform.isLinux) {
+        final r = await Process.run('ip', [
+          '-o',
+          '-f',
+          'inet',
+          'addr',
+          'show',
+          interfaceName,
+        ]);
         return r.exitCode == 0 ? prefixFromIpAddr(r.stdout as String) : null;
       }
     } on ProcessException {
+      return null;
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
       return null;
     }
     return null;
