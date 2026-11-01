@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+# Git sets GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE for hook subprocesses. Inside
+# a git worktree, GIT_DIR points at .git/worktrees/<name> — Flutter's own
+# internal git-based SDK version detection inherits these and resolves
+# against *this* repo instead of the Flutter SDK's, misreporting its version
+# as "0.0.0-unknown" and breaking dependency resolution. Unset them so
+# flutter (and git, if it shells out again) rediscovers the repo normally
+# from cwd.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 echo "▶ flutter analyze"
 flutter analyze
 

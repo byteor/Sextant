@@ -106,6 +106,39 @@
   "newDevicesTooltip": "Новые устройства",
   "newDevicesDialogTitle": "Новые устройства",
   "noNewDevicesYet": "Пока нет новых устройств.",
+  "deepScanMenuItem": "Сканировать все порты (65535)…",
+  "deepScanConfirmTitle": "Сканировать все 65535 портов {ip}?",
+  "@deepScanConfirmTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deepScanConfirmBody": "Это может занять несколько минут и создать значительную сетевую нагрузку на устройство.",
+  "deepScanConfirmButton": "Сканировать",
+  "deepScanBusyTooltip": "Дождитесь завершения текущего сканирования",
+  "deepScanOfflineTooltip": "Устройство не в сети",
+  "deepScanStatusLine": "Глубокое сканирование {ip} — {done} / {total}",
+  "@deepScanStatusLine": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "deepScanOpenPortCount": "{count, plural, one{{count} открытый порт} few{{count} открытых порта} many{{count} открытых портов} other{{count} открытых порта}}",
+  "@deepScanOpenPortCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "deepScanComplete": "Глубокое сканирование {ip} завершено: найдено {countLabel} ({ports})",
+  "@deepScanComplete": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "countLabel": { "type": "String" },
+      "ports": { "type": "String" }
+    }
+  },
+  "deepScanCompleteNone": "Глубокое сканирование {ip} завершено — дополнительные открытые порты не найдены.",
+  "@deepScanCompleteNone": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
   "aboutTooltip": "О программе",
   "settingsTooltip": "Настройки",
 

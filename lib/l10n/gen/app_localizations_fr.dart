@@ -360,6 +360,53 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noNewDevicesYet => 'Aucun nouvel appareil pour l\'instant.';
 
   @override
+  String get deepScanMenuItem => 'Analyser tous les ports (65 535)…';
+
+  @override
+  String deepScanConfirmTitle(String ip) {
+    return 'Analyser les 65 535 ports de $ip ?';
+  }
+
+  @override
+  String get deepScanConfirmBody =>
+      'Cela peut prendre plusieurs minutes et génère un trafic réseau important vers l\'appareil.';
+
+  @override
+  String get deepScanConfirmButton => 'Analyser';
+
+  @override
+  String get deepScanBusyTooltip => 'Attendez la fin de l\'analyse en cours';
+
+  @override
+  String get deepScanOfflineTooltip => 'L\'appareil est hors ligne';
+
+  @override
+  String deepScanStatusLine(String ip, int done, int total) {
+    return 'Analyse approfondie de $ip — $done / $total';
+  }
+
+  @override
+  String deepScanOpenPortCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ports ouverts',
+      one: '$count port ouvert',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deepScanComplete(String ip, String countLabel, String ports) {
+    return 'Analyse approfondie de $ip terminée : $countLabel trouvé(s) ($ports)';
+  }
+
+  @override
+  String deepScanCompleteNone(String ip) {
+    return 'Analyse approfondie de $ip terminée — aucun port ouvert supplémentaire trouvé.';
+  }
+
+  @override
   String get aboutTooltip => 'À propos';
 
   @override

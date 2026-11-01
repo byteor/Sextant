@@ -361,6 +361,53 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noNewDevicesYet => 'Aún no hay dispositivos nuevos.';
 
   @override
+  String get deepScanMenuItem => 'Escanear todos los puertos (65.535)…';
+
+  @override
+  String deepScanConfirmTitle(String ip) {
+    return '¿Escanear los 65.535 puertos de $ip?';
+  }
+
+  @override
+  String get deepScanConfirmBody =>
+      'Esto puede tardar varios minutos y genera tráfico de red significativo hacia el dispositivo.';
+
+  @override
+  String get deepScanConfirmButton => 'Escanear';
+
+  @override
+  String get deepScanBusyTooltip => 'Espera a que termine el análisis actual';
+
+  @override
+  String get deepScanOfflineTooltip => 'El dispositivo está fuera de línea';
+
+  @override
+  String deepScanStatusLine(String ip, int done, int total) {
+    return 'Análisis profundo de $ip — $done / $total';
+  }
+
+  @override
+  String deepScanOpenPortCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count puertos abiertos',
+      one: '$count puerto abierto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deepScanComplete(String ip, String countLabel, String ports) {
+    return 'Análisis profundo de $ip completado: $countLabel encontrado(s) ($ports)';
+  }
+
+  @override
+  String deepScanCompleteNone(String ip) {
+    return 'Análisis profundo de $ip completado — no se encontraron puertos abiertos adicionales.';
+  }
+
+  @override
   String get aboutTooltip => 'Acerca de';
 
   @override

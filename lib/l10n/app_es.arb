@@ -106,6 +106,39 @@
   "newDevicesTooltip": "Dispositivos nuevos",
   "newDevicesDialogTitle": "Dispositivos nuevos",
   "noNewDevicesYet": "Aún no hay dispositivos nuevos.",
+  "deepScanMenuItem": "Escanear todos los puertos (65.535)…",
+  "deepScanConfirmTitle": "¿Escanear los 65.535 puertos de {ip}?",
+  "@deepScanConfirmTitle": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
+  "deepScanConfirmBody": "Esto puede tardar varios minutos y genera tráfico de red significativo hacia el dispositivo.",
+  "deepScanConfirmButton": "Escanear",
+  "deepScanBusyTooltip": "Espera a que termine el análisis actual",
+  "deepScanOfflineTooltip": "El dispositivo está fuera de línea",
+  "deepScanStatusLine": "Análisis profundo de {ip} — {done} / {total}",
+  "@deepScanStatusLine": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "deepScanOpenPortCount": "{count, plural, one{{count} puerto abierto} other{{count} puertos abiertos}}",
+  "@deepScanOpenPortCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "deepScanComplete": "Análisis profundo de {ip} completado: {countLabel} encontrado(s) ({ports})",
+  "@deepScanComplete": {
+    "placeholders": {
+      "ip": { "type": "String" },
+      "countLabel": { "type": "String" },
+      "ports": { "type": "String" }
+    }
+  },
+  "deepScanCompleteNone": "Análisis profundo de {ip} completado — no se encontraron puertos abiertos adicionales.",
+  "@deepScanCompleteNone": {
+    "placeholders": { "ip": { "type": "String" } }
+  },
   "aboutTooltip": "Acerca de",
   "settingsTooltip": "Configuración",
 

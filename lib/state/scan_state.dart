@@ -15,6 +15,11 @@ class ScanState {
     this.backgroundScanned = 0,
     this.backgroundTotal = 0,
     this.justDiscoveredIdentities = const {},
+    this.isDeepScanning = false,
+    this.deepScanDeviceIdentity,
+    this.deepScanIp,
+    this.deepScanCompleted = 0,
+    this.deepScanTotal = 0,
   });
 
   final bool isScanning;
@@ -63,6 +68,21 @@ class ScanState {
   /// also fires for manual scans, not just monitoring ticks.
   final Set<String> justDiscoveredIdentities;
 
+  /// True while a deep (all-65,535-port) scan of a single device is in
+  /// flight. Mutually exclusive with [isScanning]/[isBackgroundScanning] —
+  /// see `ScanController.startDeepPortScan`.
+  final bool isDeepScanning;
+
+  /// Identity/IP of the device being deep-scanned, if [isDeepScanning].
+  /// Stale (last-scanned device) once [isDeepScanning] is false — harmless,
+  /// since callers should gate on [isDeepScanning] first.
+  final String? deepScanDeviceIdentity;
+  final String? deepScanIp;
+
+  /// Probe progress for the in-flight deep scan (0 / 0 when none has run).
+  final int deepScanCompleted;
+  final int deepScanTotal;
+
   bool get isBusy => isScanning || enriching;
 
   double get progress => total == 0 ? 0 : scanned / total;
@@ -83,6 +103,11 @@ class ScanState {
     int? backgroundScanned,
     int? backgroundTotal,
     Set<String>? justDiscoveredIdentities,
+    bool? isDeepScanning,
+    String? deepScanDeviceIdentity,
+    String? deepScanIp,
+    int? deepScanCompleted,
+    int? deepScanTotal,
   }) {
     return ScanState(
       isScanning: isScanning ?? this.isScanning,
@@ -98,6 +123,12 @@ class ScanState {
       backgroundTotal: backgroundTotal ?? this.backgroundTotal,
       justDiscoveredIdentities:
           justDiscoveredIdentities ?? this.justDiscoveredIdentities,
+      isDeepScanning: isDeepScanning ?? this.isDeepScanning,
+      deepScanDeviceIdentity:
+          deepScanDeviceIdentity ?? this.deepScanDeviceIdentity,
+      deepScanIp: deepScanIp ?? this.deepScanIp,
+      deepScanCompleted: deepScanCompleted ?? this.deepScanCompleted,
+      deepScanTotal: deepScanTotal ?? this.deepScanTotal,
     );
   }
 }

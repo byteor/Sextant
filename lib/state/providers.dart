@@ -27,7 +27,9 @@ import '../model/network_info.dart';
 import '../model/scan_protocol.dart';
 import '../platform/network_discovery.dart';
 import '../platform/network_monitor.dart';
+import '../scan/deep_port_scanner.dart';
 import '../scan/scan_orchestrator.dart';
+import '../scan/well_known_ports.dart';
 import 'column_widths.dart';
 import 'scan_state.dart';
 import 'settings.dart';
@@ -234,6 +236,9 @@ class ScanController extends Notifier<ScanState> {
   Completer<void>? _scanCompleter;
   bool _scanWasStopped = false;
 
+  // Deep (all-port) single-device scan cancellation.
+  bool _deepScanCancelled = false;
+
   /// Live-monitoring state: when [_monitoring] is on, the network is re-scanned
   /// every configured refresh interval (see [_scheduleNextTick]) and each pass
   /// is diffed against the previous to surface newly-appeared devices.
@@ -248,11 +253,14 @@ class ScanController extends Notifier<ScanState> {
 
   /// Builds a [ScanOrchestrator] with each scan phase enabled per the user's
   /// current settings, falling back to all-enabled (prior behavior) until
-  /// settings have loaded.
-  ScanOrchestrator _buildOrchestrator() {
+  /// settings have loaded. The TCP phase's port list is the default list
+  /// plus every port ever found via a deep scan on any device (see
+  /// [mergedScanPorts]), so those keep showing as open on every future scan.
+  Future<ScanOrchestrator> _buildOrchestrator() async {
     final enabled =
         ref.read(settingsProvider).value?.enabledProtocols ??
         ScanProtocol.values.toSet();
+    final extraPorts = await ref.read(historyDatabaseProvider).allExtraPorts();
     return ScanOrchestrator(
       icmpEnabled: enabled.contains(ScanProtocol.icmp),
       arpEnabled: enabled.contains(ScanProtocol.arp),
@@ -260,6 +268,7 @@ class ScanController extends Notifier<ScanState> {
       mdnsEnabled: enabled.contains(ScanProtocol.mdns),
       netbiosEnabled: enabled.contains(ScanProtocol.netbios),
       ssdpEnabled: enabled.contains(ScanProtocol.ssdp),
+      ports: mergedScanPorts(extraPorts),
     );
   }
 
@@ -275,7 +284,21 @@ class ScanController extends Notifier<ScanState> {
   }
 
   Future<void> startScan(ScanNetwork network) async {
-    if (state.isScanning) return;
+    if (state.isScanning ||
+        state.isBackgroundScanning ||
+        state.isDeepScanning) {
+      return;
+    }
+    // Written synchronously, before any await, so a concurrent startScan/
+    // _monitorTick/startDeepPortScan call sees isScanning flip the instant
+    // this scan begins, not after the prefetch awaits below complete.
+    final total = network.subnet.hostAddresses().length;
+    state = ScanState(
+      isScanning: true,
+      total: total,
+      isMonitoring: _monitoring,
+    );
+
     await _sub?.cancel();
     _byIp.clear();
     _probed = 0;
@@ -286,15 +309,8 @@ class ScanController extends Notifier<ScanState> {
     _oui = await ref.read(ouiLookupProvider.future);
     final store = await ref.read(renameStoreProvider.future);
     final typeStore = await ref.read(typeOverrideStoreProvider.future);
-    final total = network.subnet.hostAddresses().length;
 
-    state = ScanState(
-      isScanning: true,
-      total: total,
-      isMonitoring: _monitoring,
-    );
-
-    final orchestrator = _buildOrchestrator();
+    final orchestrator = await _buildOrchestrator();
     _orchestrator = orchestrator;
     final completer = Completer<void>();
     _scanCompleter = completer;
@@ -337,6 +353,10 @@ class ScanController extends Notifier<ScanState> {
 
   Future<void> stopScan() async {
     _scanWasStopped = true;
+    // Stops *every* kind of in-flight scan, including a deep port scan: the
+    // main caller is the network-change listener, and a deep scan aimed at a
+    // device on the subnet the host just left is as stale as a regular one.
+    _deepScanCancelled = true;
     _orchestrator?.cancel();
     _orchestrator = null;
     final sc = _scanCompleter;
@@ -348,6 +368,78 @@ class ScanController extends Notifier<ScanState> {
     _emit(isScanning: false);
   }
 
+  /// Scans every TCP port (1–65,535) on [device]'s current IP. Returns the
+  /// sorted list of open ports found (already merged into the live device
+  /// and persisted), or null if the scan was cancelled, or if it couldn't
+  /// start because a regular scan, a monitoring tick, or another deep scan
+  /// is already running — only one of those three may run at a time, since
+  /// all three mutate the live device list.
+  Future<List<int>?> startDeepPortScan(
+    Device device,
+    ScanNetwork network,
+  ) async {
+    if (state.isScanning ||
+        state.isBackgroundScanning ||
+        state.isDeepScanning) {
+      return null;
+    }
+    final identity = _identityOf(device);
+    _deepScanCancelled = false;
+    state = state.copyWith(
+      isDeepScanning: true,
+      deepScanDeviceIdentity: identity,
+      deepScanIp: device.ip,
+      deepScanCompleted: 0,
+      deepScanTotal: kAllTcpPorts.length,
+    );
+
+    // try/finally so the mutual-exclusion flag is *always* cleared: without
+    // it, anything throwing in here (a malformed IP reaching
+    // InternetAddress, an unexpected scanner error) would leave
+    // isDeepScanning stuck true for the rest of the process, permanently
+    // locking out startScan, _monitorTick and every future deep scan.
+    // Everything that mutates _byIp or persists results stays *inside* the
+    // try, so the flag also covers the completion merge — see the design's
+    // "the deep scan's completion merge would clobber a concurrently-running
+    // regular scan's fresher data". On a throw, the completion logic is
+    // skipped (no half-built state is persisted) and the error propagates to
+    // the caller, matching startScan, which likewise doesn't swallow
+    // orchestration errors.
+    try {
+      final found = await DeepPortScanner().scan(
+        InternetAddress(device.ip),
+        onProgress: (done, total) {
+          state = state.copyWith(deepScanCompleted: done, deepScanTotal: total);
+        },
+        isCancelled: () => _deepScanCancelled,
+      );
+      if (_deepScanCancelled) return null;
+
+      if (found.isNotEmpty) {
+        final db = ref.read(historyDatabaseProvider);
+        await db.recordDeepScanPorts(identity, network.id, found);
+
+        final current = _byIp[device.ip];
+        if (current != null) {
+          _byIp[device.ip] = current.copyWith(
+            openPorts: (<int>{...current.openPorts, ...found}.toList()..sort()),
+          );
+          _emit();
+          await _saveHistory(network, _byIp.values.toList());
+        }
+      }
+      return found;
+    } finally {
+      state = state.copyWith(isDeepScanning: false);
+    }
+  }
+
+  /// Cancels the in-flight deep port scan, if any. Nothing is persisted and
+  /// [startDeepPortScan] returns null for a cancelled scan.
+  void cancelDeepPortScan() {
+    _deepScanCancelled = true;
+  }
+
   /// Turns live monitoring on or off. On enable, if the list is empty it runs a
   /// visible baseline scan to populate it; thereafter it re-scans every
   /// configured refresh interval. Each periodic re-scan runs *entirely in the
@@ -357,6 +449,10 @@ class ScanController extends Notifier<ScanState> {
   /// greyed out (kept, not deleted), changed ones updated — and newly-appeared
   /// devices surfaced via [ScanState.lastNewDevices] for the alert.
   Future<void> toggleMonitoring(ScanNetwork network) async {
+    // Defense in depth behind the toolbar button being disabled: monitoring
+    // ticks mutate _byIp, so they must never be started (or stopped, leaving
+    // an inconsistent view) while a deep scan owns it.
+    if (state.isDeepScanning) return;
     if (_monitoring) {
       _stopMonitoring();
       return;
@@ -382,8 +478,10 @@ class ScanController extends Notifier<ScanState> {
     if (mc != null && !mc.isCompleted) mc.complete();
     _monitorSub?.cancel();
     _monitorSub = null;
-    // Cancelling mid-scan means the in-flight _backgroundScan's onDone never
-    // fires — clear the progress-bar flag here so it doesn't linger after stop.
+    // Cancelling mid-tick means the in-flight tick will bail at its
+    // `if (!_monitoring) return;` check — clear the progress-bar flag here so
+    // it doesn't linger on screen until that tick unwinds. (Its own finally
+    // clears it too; this just makes the stop immediate.)
     state = state.copyWith(isBackgroundScanning: false);
     _emit();
   }
@@ -397,36 +495,58 @@ class ScanController extends Notifier<ScanState> {
 
   Future<void> _monitorTick() async {
     if (!_monitoring || _monitorNetwork == null) return;
-    final found = await _backgroundScan(_monitorNetwork!);
-    if (!_monitoring) return; // toggled off mid-scan; discard
-    await _recordLatency(_monitorNetwork!, found);
-    final diff = _reconcile(found);
-    // Only record a snapshot when something actually changed, so the history is
-    // a meaningful change log rather than thousands of identical hourly dumps.
-    if (diff.hasChanges) await _saveHistory(_monitorNetwork!, found);
-    await _recordNewDevices(_monitorNetwork!, found);
-    _scheduleNextTick();
+    if (state.isDeepScanning) {
+      // Defer this tick rather than race the deep scan for _byIp — retry on
+      // the next scheduled tick once it's finished.
+      _scheduleNextTick();
+      return;
+    }
+    // isBackgroundScanning covers the *whole* tick, not just the network
+    // sweep inside _backgroundScan: the tail below (_recordLatency,
+    // _reconcile, _saveHistory, _recordNewDevices) awaits real database
+    // writes and mutates _byIp, so clearing the flag when the sweep ends
+    // would open a window in which startDeepPortScan passes its guard and
+    // runs concurrently with _reconcile. The finally guarantees the flag is
+    // cleared even if one of those writes throws, so a failed tick can't
+    // lock out scanning for the rest of the process.
+    try {
+      final found = await _backgroundScan(_monitorNetwork!);
+      if (!_monitoring) return; // toggled off mid-scan; discard
+      await _recordLatency(_monitorNetwork!, found);
+      final diff = _reconcile(found);
+      // Only record a snapshot when something actually changed, so the history
+      // is a meaningful change log rather than thousands of identical hourly
+      // dumps.
+      if (diff.hasChanges) await _saveHistory(_monitorNetwork!, found);
+      await _recordNewDevices(_monitorNetwork!, found);
+      _scheduleNextTick();
+    } finally {
+      state = state.copyWith(isBackgroundScanning: false);
+    }
   }
 
   /// Runs a full scan to completion without touching the displayed state,
   /// returning the decorated devices it found. The on-screen list keeps showing
   /// the previous results until [_reconcile] applies the delta.
   Future<List<Device>> _backgroundScan(ScanNetwork network) async {
-    final store = await ref.read(renameStoreProvider.future);
-    final typeStore = await ref.read(typeOverrideStoreProvider.future);
-    final byIp = <String, Device>{};
-    final orchestrator = _buildOrchestrator();
-    _monitorOrchestrator = orchestrator;
-    final completer = Completer<void>();
-    _monitorCompleter = completer;
     // Surface the otherwise-invisible re-scan as a progress bar, without
     // touching the displayed device list. Progress lives in dedicated
     // background fields so it can't collide with a foreground scan's display.
+    // Written synchronously, before any await, so a concurrent startScan/
+    // startDeepPortScan call sees isBackgroundScanning flip the instant this
+    // scan begins, not after the prefetch awaits below complete.
     state = state.copyWith(
       isBackgroundScanning: true,
       backgroundScanned: 0,
       backgroundTotal: network.subnet.hostAddresses().length,
     );
+    final store = await ref.read(renameStoreProvider.future);
+    final typeStore = await ref.read(typeOverrideStoreProvider.future);
+    final byIp = <String, Device>{};
+    final orchestrator = await _buildOrchestrator();
+    _monitorOrchestrator = orchestrator;
+    final completer = Completer<void>();
+    _monitorCompleter = completer;
     _monitorSub = orchestrator
         .scan(
           network,
@@ -447,7 +567,10 @@ class ScanController extends Notifier<ScanState> {
     await completer.future;
     _monitorCompleter = null;
     _monitorOrchestrator = null;
-    state = state.copyWith(isBackgroundScanning: false);
+    // isBackgroundScanning is deliberately *not* cleared here: it is the
+    // mutual-exclusion flag for the whole monitor tick, and [_monitorTick]
+    // still has to reconcile and persist these results. It clears it once
+    // that's done.
     return byIp.values.toList();
   }
 
