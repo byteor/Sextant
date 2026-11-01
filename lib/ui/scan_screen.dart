@@ -69,9 +69,12 @@ class ScanScreen extends ConsumerWidget {
       );
     });
 
+    final compact = MediaQuery.sizeOf(context).width < _kCompactWidth;
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
+        actions: compact ? const [_CompactOverflowMenu()] : null,
         title: Row(
           children: [
             Image.asset(
@@ -97,14 +100,16 @@ class ScanScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: networksAsync.when(
-                data: (networks) => _Toolbar(networks: networks),
-                loading: () => const LinearProgressIndicator(minHeight: 2),
-                error: (e, _) => Text('Network error: $e'),
+            if (!compact) ...[
+              const SizedBox(width: 24),
+              Expanded(
+                child: networksAsync.when(
+                  data: (networks) => _Toolbar(networks: networks),
+                  loading: () => const LinearProgressIndicator(minHeight: 2),
+                  error: (e, _) => Text('Network error: $e'),
+                ),
               ),
-            ),
+            ],
           ],
         ),
         bottom: scan.isScanning || scan.isBackgroundScanning
@@ -130,6 +135,15 @@ class ScanScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          if (compact)
+            networksAsync.when(
+              data: (networks) => _CompactControls(networks: networks),
+              loading: () => const LinearProgressIndicator(minHeight: 2),
+              error: (e, _) => Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text('Network error: $e'),
+              ),
+            ),
           _StatusBar(),
           const Divider(height: 1),
           Expanded(
@@ -141,6 +155,10 @@ class ScanScreen extends ConsumerWidget {
   }
 }
 
+/// Below this width the desktop single-row toolbar and column table don't
+/// fit, so the screen switches to the phone layout.
+const _kCompactWidth = 600.0;
+
 class _Toolbar extends ConsumerWidget {
   const _Toolbar({required this.networks});
 
@@ -148,9 +166,6 @@ class _Toolbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedNetworkProvider);
-    final scan = ref.watch(scanControllerProvider);
-    final effective = effectiveNetwork(networks, selected);
     final l10n = AppLocalizations.of(context);
 
     return Row(
@@ -158,92 +173,18 @@ class _Toolbar extends ConsumerWidget {
         if (networks.isEmpty)
           Text(l10n.noActiveNetworkFound)
         else
-          DropdownButton<ScanNetwork>(
-            value: effective,
-            underline: const SizedBox.shrink(),
-            items: [
-              for (final n in networks)
-                DropdownMenuItem(
-                  value: n,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        n.isWireless ? Icons.wifi : Icons.settings_ethernet,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.networkOption(
-                          n.displayName,
-                          n.subnet.networkAddress.address,
-                          n.subnet.prefixLength,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-            onChanged: scan.isBusy
-                ? null
-                : (n) => ref.read(selectedNetworkProvider.notifier).select(n),
-          ),
+          _NetworkDropdown(networks: networks),
         const SizedBox(width: 16),
-        if (scan.isBusy)
-          FilledButton.tonalIcon(
-            onPressed: () =>
-                ref.read(scanControllerProvider.notifier).stopScan(),
-            icon: const Icon(Icons.stop),
-            label: Text(l10n.stopButtonLabel),
-          )
-        else
-          FilledButton.icon(
-            onPressed: effective == null
-                ? null
-                : () => ref
-                      .read(scanControllerProvider.notifier)
-                      .startScan(effective),
-            icon: const Icon(Icons.radar),
-            label: Text(l10n.scanButtonLabel),
-          ),
+        _ScanButton(networks: networks),
         const SizedBox(width: 8),
-        IconButton(
-          tooltip: scan.isMonitoring
-              ? l10n.monitoringStopTooltip
-              : l10n.monitoringStartTooltip,
-          isSelected: scan.isMonitoring,
-          selectedIcon: const Icon(Icons.sensors),
-          icon: const Icon(Icons.sensors_off_outlined),
-          onPressed: effective == null
-              ? null
-              : () => ref
-                    .read(scanControllerProvider.notifier)
-                    .toggleMonitoring(effective),
-        ),
+        _MonitorButton(networks: networks),
         const SizedBox(width: 8),
-        PopupMenuButton<ExportFormat>(
-          tooltip: l10n.exportScanTooltip,
-          enabled: scan.devices.isNotEmpty && !scan.isBusy,
-          icon: const Icon(Icons.download_outlined),
-          onSelected: (format) => exportScan(context, scan.devices, format),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: ExportFormat.csv,
-              child: Text(l10n.exportAsCsv),
-            ),
-            PopupMenuItem(
-              value: ExportFormat.json,
-              child: Text(l10n.exportAsJson),
-            ),
-          ],
-        ),
+        const _ExportButton(),
         const SizedBox(width: 8),
         IconButton(
           tooltip: l10n.scanHistoryTooltip,
           icon: const Icon(Icons.history),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
-          ),
+          onPressed: () => _openHistory(context),
         ),
         const Spacer(),
         IconButton(
@@ -254,10 +195,210 @@ class _Toolbar extends ConsumerWidget {
         IconButton(
           tooltip: l10n.settingsTooltip,
           icon: const Icon(Icons.settings_outlined),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-          ),
+          onPressed: () => _openSettings(context),
         ),
+      ],
+    );
+  }
+}
+
+void _openHistory(BuildContext context) => Navigator.of(
+  context,
+).push(MaterialPageRoute<void>(builder: (_) => const HistoryScreen()));
+
+void _openSettings(BuildContext context) => Navigator.of(
+  context,
+).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+
+/// Phone layout: the network picker on its own full-width line, with the scan,
+/// monitor and export controls underneath.
+class _CompactControls extends ConsumerWidget {
+  const _CompactControls({required this.networks});
+
+  final List<ScanNetwork> networks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (networks.isEmpty)
+            Text(l10n.noActiveNetworkFound)
+          else
+            _NetworkDropdown(networks: networks, expanded: true),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _ScanButton(networks: networks)),
+              const SizedBox(width: 8),
+              _MonitorButton(networks: networks),
+              const _ExportButton(),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Phone layout's app-bar overflow menu: the actions the desktop toolbar shows
+/// as individual icon buttons.
+class _CompactOverflowMenu extends StatelessWidget {
+  const _CompactOverflowMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return PopupMenuButton<VoidCallback>(
+      onSelected: (action) => action(),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: () => _openHistory(context),
+          child: Text(l10n.scanHistoryTooltip),
+        ),
+        PopupMenuItem(
+          value: () => _openSettings(context),
+          child: Text(l10n.settingsTooltip),
+        ),
+        PopupMenuItem(
+          value: () => showSextantAboutDialog(context),
+          child: Text(l10n.aboutTooltip),
+        ),
+      ],
+    );
+  }
+}
+
+class _NetworkDropdown extends ConsumerWidget {
+  const _NetworkDropdown({required this.networks, this.expanded = false});
+
+  final List<ScanNetwork> networks;
+
+  /// Fill the available width (and ellipsize long labels) instead of sizing to
+  /// the selected entry.
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedNetworkProvider);
+    final scan = ref.watch(scanControllerProvider);
+    final effective = effectiveNetwork(networks, selected);
+    final l10n = AppLocalizations.of(context);
+
+    return DropdownButton<ScanNetwork>(
+      value: effective,
+      isExpanded: expanded,
+      underline: const SizedBox.shrink(),
+      items: [
+        for (final n in networks)
+          DropdownMenuItem(
+            value: n,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  n.isWireless ? Icons.wifi : Icons.settings_ethernet,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    l10n.networkOption(
+                      n.displayName,
+                      n.subnet.networkAddress.address,
+                      n.subnet.prefixLength,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+      onChanged: scan.isBusy
+          ? null
+          : (n) => ref.read(selectedNetworkProvider.notifier).select(n),
+    );
+  }
+}
+
+class _ScanButton extends ConsumerWidget {
+  const _ScanButton({required this.networks});
+
+  final List<ScanNetwork> networks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedNetworkProvider);
+    final scan = ref.watch(scanControllerProvider);
+    final effective = effectiveNetwork(networks, selected);
+    final l10n = AppLocalizations.of(context);
+
+    if (scan.isBusy) {
+      return FilledButton.tonalIcon(
+        onPressed: () => ref.read(scanControllerProvider.notifier).stopScan(),
+        icon: const Icon(Icons.stop),
+        label: Text(l10n.stopButtonLabel),
+      );
+    }
+    return FilledButton.icon(
+      onPressed: effective == null
+          ? null
+          : () =>
+                ref.read(scanControllerProvider.notifier).startScan(effective),
+      icon: const Icon(Icons.radar),
+      label: Text(l10n.scanButtonLabel),
+    );
+  }
+}
+
+class _MonitorButton extends ConsumerWidget {
+  const _MonitorButton({required this.networks});
+
+  final List<ScanNetwork> networks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedNetworkProvider);
+    final scan = ref.watch(scanControllerProvider);
+    final effective = effectiveNetwork(networks, selected);
+    final l10n = AppLocalizations.of(context);
+
+    return IconButton(
+      tooltip: scan.isMonitoring
+          ? l10n.monitoringStopTooltip
+          : l10n.monitoringStartTooltip,
+      isSelected: scan.isMonitoring,
+      selectedIcon: const Icon(Icons.sensors),
+      icon: const Icon(Icons.sensors_off_outlined),
+      onPressed: effective == null
+          ? null
+          : () => ref
+                .read(scanControllerProvider.notifier)
+                .toggleMonitoring(effective),
+    );
+  }
+}
+
+class _ExportButton extends ConsumerWidget {
+  const _ExportButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scan = ref.watch(scanControllerProvider);
+    final l10n = AppLocalizations.of(context);
+
+    return PopupMenuButton<ExportFormat>(
+      tooltip: l10n.exportScanTooltip,
+      enabled: scan.devices.isNotEmpty && !scan.isBusy,
+      icon: const Icon(Icons.download_outlined),
+      onSelected: (format) => exportScan(context, scan.devices, format),
+      itemBuilder: (context) => [
+        PopupMenuItem(value: ExportFormat.csv, child: Text(l10n.exportAsCsv)),
+        PopupMenuItem(value: ExportFormat.json, child: Text(l10n.exportAsJson)),
       ],
     );
   }
@@ -414,6 +555,24 @@ class _DeviceTable extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final compact = constraints.maxWidth < _kCompactWidth;
+        final empty = Center(
+          child: Text(
+            isBusy ? l10n.scanningEllipsis : l10n.pressScanHint,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        );
+
+        // Phone layout: one card per device instead of the column table.
+        if (compact) {
+          if (devices.isEmpty) return empty;
+          return ListView.builder(
+            itemCount: devices.length,
+            itemBuilder: (context, i) =>
+                DeviceRow.compact(device: devices[i], tinted: i.isOdd),
+          );
+        }
+
         final widths = EffectiveColumnWidths.compute(
           preferred: preferred,
           minWidths: minWidths,
@@ -421,12 +580,7 @@ class _DeviceTable extends ConsumerWidget {
         );
 
         final body = devices.isEmpty
-            ? Center(
-                child: Text(
-                  isBusy ? l10n.scanningEllipsis : l10n.pressScanHint,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              )
+            ? empty
             : ListView.builder(
                 itemCount: devices.length,
                 itemBuilder: (context, i) => DeviceRow(
@@ -574,12 +728,21 @@ class _ColumnResizeHandle extends ConsumerWidget {
 class DeviceRow extends ConsumerWidget {
   const DeviceRow({
     super.key,
-    required this.widths,
+    required EffectiveColumnWidths this.widths,
     required this.device,
     this.tinted = false,
   });
 
-  final EffectiveColumnWidths widths;
+  /// Phone layout: a two-line card with details and actions in a bottom sheet,
+  /// instead of a row of fixed-width table columns.
+  const DeviceRow.compact({
+    super.key,
+    required this.device,
+    this.tinted = false,
+  }) : widths = null;
+
+  /// Column widths for the table row; null for the [DeviceRow.compact] card.
+  final EffectiveColumnWidths? widths;
   final Device device;
 
   /// Whether this row gets the alternating (zebra) background tint.
@@ -601,6 +764,9 @@ class DeviceRow extends ConsumerWidget {
       hostname: device.hostname,
       openPorts: device.openPorts,
     );
+
+    final widths = this.widths;
+    if (widths == null) return _buildCard(context, ref);
 
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -764,6 +930,185 @@ class DeviceRow extends ConsumerWidget {
     );
   }
 
+  Widget _buildCard(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final offline = !device.isOnline;
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final identity = deviceIdentity(
+      mac: device.mac,
+      hostname: device.hostname,
+      openPorts: device.openPorts,
+    );
+    final latency = ref
+        .watch(latencyHistoryProvider(identity))
+        .maybeWhen(data: latestLatencyLabel, orElse: () => null);
+    final ip = device.additionalIps.isEmpty
+        ? device.ip
+        : '${device.ip} +${device.additionalIps.length}';
+
+    return Material(
+      color: tinted
+          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
+          : Colors.transparent,
+      child: ListTile(
+        onTap: () => _showDetails(context, ref, latency),
+        onLongPress: () => _showMenu(context, ref, null),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StatusDot(online: device.isOnline, latencyMs: device.latencyMs),
+            const SizedBox(width: 8),
+            Icon(deviceIcon(device), size: 22, color: offline ? muted : null),
+          ],
+        ),
+        title: Text(
+          device.displayName,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: device.customName != null
+                ? FontWeight.w600
+                : FontWeight.normal,
+            fontStyle: device.customName != null
+                ? FontStyle.italic
+                : FontStyle.normal,
+            color: offline ? muted : null,
+          ),
+        ),
+        subtitle: Text(
+          [ip, if (device.vendor != null) device.vendor!].join(' · '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: latency == null
+            ? null
+            : Text(latency, style: theme.textTheme.bodySmall),
+      ),
+    );
+  }
+
+  /// The full set of per-device attributes the card leaves out, plus the same
+  /// actions as the desktop context menu.
+  Future<void> _showDetails(
+    BuildContext context,
+    WidgetRef ref,
+    String? latency,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    Widget field(String label, Widget value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(label, style: theme.textTheme.labelMedium),
+          ),
+          Expanded(child: value),
+        ],
+      ),
+    );
+
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(device.displayName, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              field(l10n.columnIp, Text(device.ip)),
+              if (device.additionalIps.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(l10n.alsoSeenAt(device.additionalIps.join(', '))),
+                ),
+              field(l10n.columnMac, Text(device.mac ?? '—')),
+              field(l10n.columnVendor, Text(device.vendor ?? '—')),
+              if (latency != null) field(l10n.columnLatency, Text(latency)),
+              if (device.openPorts.isNotEmpty)
+                field(
+                  l10n.columnOpenPorts,
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      for (final port in device.openPorts)
+                        _PortChip(port: port, service: device.services[port]),
+                    ],
+                  ),
+                ),
+              if (device.discoveredBy.isNotEmpty)
+                field(
+                  l10n.columnFoundVia,
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      for (final source in device.discoveredBy)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(discoverySourceIcon(source), size: 16),
+                            const SizedBox(width: 4),
+                            Text(discoverySourceLabel(l10n, source)),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              const Divider(),
+              for (final action in _actions(l10n))
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(action.icon),
+                  title: Text(action.label),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    if (context.mounted) _perform(context, ref, action.value);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Per-device actions shared by the desktop context menu and the phone
+  /// details sheet.
+  List<({String value, IconData icon, String label})> _actions(
+    AppLocalizations l10n,
+  ) {
+    final canOpenWeb =
+        device.openPorts.contains(80) || device.openPorts.contains(443);
+    return [
+      if (canOpenWeb)
+        (value: 'open', icon: Icons.open_in_browser, label: l10n.openInBrowser),
+      (
+        value: 'rename',
+        icon: Icons.drive_file_rename_outline,
+        label: l10n.renameEllipsis,
+      ),
+      (
+        value: 'type',
+        icon: deviceTypeIcon(device.deviceType),
+        label: l10n.changeTypeEllipsis,
+      ),
+      (value: 'copy_ip', icon: Icons.copy, label: l10n.copyIp),
+      if (device.mac != null)
+        (value: 'copy_mac', icon: Icons.copy_all, label: l10n.copyMac),
+      if (device.mac != null)
+        (value: 'wake', icon: Icons.flash_on_outlined, label: l10n.wakeOnLan),
+    ];
+  }
+
   Future<void> _showMenu(
     BuildContext context,
     WidgetRef ref,
@@ -772,8 +1117,6 @@ class DeviceRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = globalPosition ?? overlay.size.center(Offset.zero);
-    final canOpenWeb =
-        device.openPorts.contains(80) || device.openPorts.contains(443);
 
     final selected = await showMenu<String>(
       context: context,
@@ -813,61 +1156,27 @@ class DeviceRow extends ConsumerWidget {
           ),
           const PopupMenuDivider(),
         ],
-        if (canOpenWeb)
+        for (final action in _actions(l10n))
           PopupMenuItem(
-            value: 'open',
+            value: action.value,
             child: ListTile(
               dense: true,
-              leading: const Icon(Icons.open_in_browser),
-              title: Text(l10n.openInBrowser),
-            ),
-          ),
-        PopupMenuItem(
-          value: 'rename',
-          child: ListTile(
-            dense: true,
-            leading: const Icon(Icons.drive_file_rename_outline),
-            title: Text(l10n.renameEllipsis),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'type',
-          child: ListTile(
-            dense: true,
-            leading: Icon(deviceTypeIcon(device.deviceType)),
-            title: Text(l10n.changeTypeEllipsis),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'copy_ip',
-          child: ListTile(
-            dense: true,
-            leading: const Icon(Icons.copy),
-            title: Text(l10n.copyIp),
-          ),
-        ),
-        if (device.mac != null)
-          PopupMenuItem(
-            value: 'copy_mac',
-            child: ListTile(
-              dense: true,
-              leading: const Icon(Icons.copy_all),
-              title: Text(l10n.copyMac),
-            ),
-          ),
-        if (device.mac != null)
-          PopupMenuItem(
-            value: 'wake',
-            child: ListTile(
-              dense: true,
-              leading: const Icon(Icons.flash_on_outlined),
-              title: Text(l10n.wakeOnLan),
+              leading: Icon(action.icon),
+              title: Text(action.label),
             ),
           ),
       ],
     );
-    if (selected == null) return;
-    switch (selected) {
+    if (selected == null || !context.mounted) return;
+    await _perform(context, ref, selected);
+  }
+
+  Future<void> _perform(
+    BuildContext context,
+    WidgetRef ref,
+    String action,
+  ) async {
+    switch (action) {
       case 'open':
         final scheme = device.openPorts.contains(443) ? 'https' : 'http';
         await launchUrl(Uri.parse('$scheme://${device.ip}'));

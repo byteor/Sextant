@@ -116,6 +116,17 @@ final ouiLookupProvider = FutureProvider<OuiVendorLookup>((ref) async {
   }
 });
 
+/// The MAC to keep when [incoming] is merged into [existing] for the same IP.
+/// The latest non-null MAC normally wins, but one learned only from mDNS (an
+/// EUI-64 IPv6 link-local address) may belong to a different interface of a
+/// multi-homed host, so it never replaces a MAC already known from ARP or
+/// NetBIOS — it only fills the gap when there's none.
+String? mergeDeviceMac(Device existing, Device incoming) {
+  final weak = incoming.discoveredBy.length == 1 &&
+      incoming.discoveredBy.contains(DiscoverySource.mdns);
+  return weak ? existing.mac ?? incoming.mac : incoming.mac ?? existing.mac;
+}
+
 /// Forces an immediate vendor-database refresh, bypassing the staleness check,
 /// and invalidates [ouiLookupProvider] so the new table takes effect. Returns
 /// whether the refresh actually fetched new data. Takes a [WidgetRef] since
@@ -228,6 +239,7 @@ class ScanController extends Notifier<ScanState> {
       _monitorTimer?.cancel();
       _monitorSub?.cancel();
       _sub?.cancel();
+      _emitTimer?.cancel();
     });
     return const ScanState();
   }
@@ -261,18 +273,18 @@ class ScanController extends Notifier<ScanState> {
       network,
       onHostComplete: (done, _) {
         _probed = done;
-        _emit(isScanning: true);
+        _emitThrottled();
       },
       onProgress: (p) {
         _scanProgress = p;
-        _emit(isScanning: true);
+        _emitThrottled();
       },
     )
         .listen(
       (observation) {
         final merged = _merge(_byIp[observation.ip], observation);
         _byIp[observation.ip] = _decorate(merged, store, typeStore);
-        _emit(isScanning: true);
+        _emitThrottled();
       },
       onError: (_) {},
       onDone: () {
@@ -480,13 +492,13 @@ class ScanController extends Notifier<ScanState> {
       );
 
   /// Combines a new observation for an IP with any existing record: unions the
-  /// open ports and discovery sources, and keeps the first non-null hostname /
-  /// MAC seen across sources.
+  /// open ports and discovery sources, and prefers the latest non-null hostname /
+  /// MAC (see [mergeDeviceMac] for the one exception).
   Device _merge(Device? existing, Device incoming) {
     if (existing == null) return incoming;
     return Device(
       ip: incoming.ip,
-      mac: incoming.mac ?? existing.mac,
+      mac: mergeDeviceMac(existing, incoming),
       hostname: incoming.hostname ?? existing.hostname,
       openPorts: <int>{...existing.openPorts, ...incoming.openPorts}.toList()
         ..sort(),
@@ -561,7 +573,39 @@ class ScanController extends Notifier<ScanState> {
         isGateway: _gatewayIp != null && device.ip == _gatewayIp,
       );
 
+  static const _emitInterval = Duration(milliseconds: 100);
+  Timer? _emitTimer;
+  bool _emitPending = false;
+
+  /// Coalesces the per-host/per-observation updates of a running scan into at
+  /// most one UI update per [_emitInterval]. A sweep reports progress for
+  /// every host (twice, via the progress and count callbacks); sorting,
+  /// de-duplicating and rebuilding the whole screen each time starves the UI
+  /// thread, which on a phone means no tap feedback and ANR dialogs. The
+  /// trailing update guarantees the last change is always shown.
+  void _emitThrottled() {
+    if (_emitTimer != null) {
+      _emitPending = true;
+      return;
+    }
+    _emit(isScanning: true);
+    _emitTimer = Timer(_emitInterval, () {
+      _emitTimer = null;
+      if (_emitPending) {
+        _emitPending = false;
+        _emitThrottled();
+      }
+    });
+  }
+
   void _emit({bool? isScanning, bool? enriching}) {
+    if (isScanning == false) {
+      // The scan is over: drop any queued "still scanning" update so it can't
+      // fire afterwards and flip the state back.
+      _emitTimer?.cancel();
+      _emitTimer = null;
+      _emitPending = false;
+    }
     final sorted = _byIp.values.toList()
       ..sort((a, b) => a.ipSortKey.compareTo(b.ipSortKey));
     state = state.copyWith(
