@@ -779,16 +779,784 @@ class LatencySamplesCompanion extends UpdateCompanion<LatencySample> {
   }
 }
 
+class $SeenDevicesTable extends SeenDevices
+    with TableInfo<$SeenDevicesTable, SeenDevice> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SeenDevicesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _networkIdMeta = const VerificationMeta(
+    'networkId',
+  );
+  @override
+  late final GeneratedColumn<String> networkId = GeneratedColumn<String>(
+    'network_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceIdentityMeta = const VerificationMeta(
+    'deviceIdentity',
+  );
+  @override
+  late final GeneratedColumn<String> deviceIdentity = GeneratedColumn<String>(
+    'device_identity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ipMeta = const VerificationMeta('ip');
+  @override
+  late final GeneratedColumn<String> ip = GeneratedColumn<String>(
+    'ip',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstSeenAtMeta = const VerificationMeta(
+    'firstSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstSeenAt = GeneratedColumn<DateTime>(
+    'first_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _acknowledgedMeta = const VerificationMeta(
+    'acknowledged',
+  );
+  @override
+  late final GeneratedColumn<bool> acknowledged = GeneratedColumn<bool>(
+    'acknowledged',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("acknowledged" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    networkId,
+    deviceIdentity,
+    ip,
+    label,
+    firstSeenAt,
+    acknowledged,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'seen_devices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SeenDevice> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('network_id')) {
+      context.handle(
+        _networkIdMeta,
+        networkId.isAcceptableOrUnknown(data['network_id']!, _networkIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_networkIdMeta);
+    }
+    if (data.containsKey('device_identity')) {
+      context.handle(
+        _deviceIdentityMeta,
+        deviceIdentity.isAcceptableOrUnknown(
+          data['device_identity']!,
+          _deviceIdentityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdentityMeta);
+    }
+    if (data.containsKey('ip')) {
+      context.handle(_ipMeta, ip.isAcceptableOrUnknown(data['ip']!, _ipMeta));
+    } else if (isInserting) {
+      context.missing(_ipMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('first_seen_at')) {
+      context.handle(
+        _firstSeenAtMeta,
+        firstSeenAt.isAcceptableOrUnknown(
+          data['first_seen_at']!,
+          _firstSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstSeenAtMeta);
+    }
+    if (data.containsKey('acknowledged')) {
+      context.handle(
+        _acknowledgedMeta,
+        acknowledged.isAcceptableOrUnknown(
+          data['acknowledged']!,
+          _acknowledgedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_acknowledgedMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {networkId, deviceIdentity};
+  @override
+  SeenDevice map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SeenDevice(
+      networkId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network_id'],
+      )!,
+      deviceIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_identity'],
+      )!,
+      ip: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ip'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      firstSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_seen_at'],
+      )!,
+      acknowledged: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}acknowledged'],
+      )!,
+    );
+  }
+
+  @override
+  $SeenDevicesTable createAlias(String alias) {
+    return $SeenDevicesTable(attachedDatabase, alias);
+  }
+}
+
+class SeenDevice extends DataClass implements Insertable<SeenDevice> {
+  final String networkId;
+  final String deviceIdentity;
+  final String ip;
+  final String label;
+  final DateTime firstSeenAt;
+  final bool acknowledged;
+  const SeenDevice({
+    required this.networkId,
+    required this.deviceIdentity,
+    required this.ip,
+    required this.label,
+    required this.firstSeenAt,
+    required this.acknowledged,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['network_id'] = Variable<String>(networkId);
+    map['device_identity'] = Variable<String>(deviceIdentity);
+    map['ip'] = Variable<String>(ip);
+    map['label'] = Variable<String>(label);
+    map['first_seen_at'] = Variable<DateTime>(firstSeenAt);
+    map['acknowledged'] = Variable<bool>(acknowledged);
+    return map;
+  }
+
+  SeenDevicesCompanion toCompanion(bool nullToAbsent) {
+    return SeenDevicesCompanion(
+      networkId: Value(networkId),
+      deviceIdentity: Value(deviceIdentity),
+      ip: Value(ip),
+      label: Value(label),
+      firstSeenAt: Value(firstSeenAt),
+      acknowledged: Value(acknowledged),
+    );
+  }
+
+  factory SeenDevice.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SeenDevice(
+      networkId: serializer.fromJson<String>(json['networkId']),
+      deviceIdentity: serializer.fromJson<String>(json['deviceIdentity']),
+      ip: serializer.fromJson<String>(json['ip']),
+      label: serializer.fromJson<String>(json['label']),
+      firstSeenAt: serializer.fromJson<DateTime>(json['firstSeenAt']),
+      acknowledged: serializer.fromJson<bool>(json['acknowledged']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'networkId': serializer.toJson<String>(networkId),
+      'deviceIdentity': serializer.toJson<String>(deviceIdentity),
+      'ip': serializer.toJson<String>(ip),
+      'label': serializer.toJson<String>(label),
+      'firstSeenAt': serializer.toJson<DateTime>(firstSeenAt),
+      'acknowledged': serializer.toJson<bool>(acknowledged),
+    };
+  }
+
+  SeenDevice copyWith({
+    String? networkId,
+    String? deviceIdentity,
+    String? ip,
+    String? label,
+    DateTime? firstSeenAt,
+    bool? acknowledged,
+  }) => SeenDevice(
+    networkId: networkId ?? this.networkId,
+    deviceIdentity: deviceIdentity ?? this.deviceIdentity,
+    ip: ip ?? this.ip,
+    label: label ?? this.label,
+    firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+    acknowledged: acknowledged ?? this.acknowledged,
+  );
+  SeenDevice copyWithCompanion(SeenDevicesCompanion data) {
+    return SeenDevice(
+      networkId: data.networkId.present ? data.networkId.value : this.networkId,
+      deviceIdentity: data.deviceIdentity.present
+          ? data.deviceIdentity.value
+          : this.deviceIdentity,
+      ip: data.ip.present ? data.ip.value : this.ip,
+      label: data.label.present ? data.label.value : this.label,
+      firstSeenAt: data.firstSeenAt.present
+          ? data.firstSeenAt.value
+          : this.firstSeenAt,
+      acknowledged: data.acknowledged.present
+          ? data.acknowledged.value
+          : this.acknowledged,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeenDevice(')
+          ..write('networkId: $networkId, ')
+          ..write('deviceIdentity: $deviceIdentity, ')
+          ..write('ip: $ip, ')
+          ..write('label: $label, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('acknowledged: $acknowledged')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    networkId,
+    deviceIdentity,
+    ip,
+    label,
+    firstSeenAt,
+    acknowledged,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SeenDevice &&
+          other.networkId == this.networkId &&
+          other.deviceIdentity == this.deviceIdentity &&
+          other.ip == this.ip &&
+          other.label == this.label &&
+          other.firstSeenAt == this.firstSeenAt &&
+          other.acknowledged == this.acknowledged);
+}
+
+class SeenDevicesCompanion extends UpdateCompanion<SeenDevice> {
+  final Value<String> networkId;
+  final Value<String> deviceIdentity;
+  final Value<String> ip;
+  final Value<String> label;
+  final Value<DateTime> firstSeenAt;
+  final Value<bool> acknowledged;
+  final Value<int> rowid;
+  const SeenDevicesCompanion({
+    this.networkId = const Value.absent(),
+    this.deviceIdentity = const Value.absent(),
+    this.ip = const Value.absent(),
+    this.label = const Value.absent(),
+    this.firstSeenAt = const Value.absent(),
+    this.acknowledged = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SeenDevicesCompanion.insert({
+    required String networkId,
+    required String deviceIdentity,
+    required String ip,
+    required String label,
+    required DateTime firstSeenAt,
+    required bool acknowledged,
+    this.rowid = const Value.absent(),
+  }) : networkId = Value(networkId),
+       deviceIdentity = Value(deviceIdentity),
+       ip = Value(ip),
+       label = Value(label),
+       firstSeenAt = Value(firstSeenAt),
+       acknowledged = Value(acknowledged);
+  static Insertable<SeenDevice> custom({
+    Expression<String>? networkId,
+    Expression<String>? deviceIdentity,
+    Expression<String>? ip,
+    Expression<String>? label,
+    Expression<DateTime>? firstSeenAt,
+    Expression<bool>? acknowledged,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (networkId != null) 'network_id': networkId,
+      if (deviceIdentity != null) 'device_identity': deviceIdentity,
+      if (ip != null) 'ip': ip,
+      if (label != null) 'label': label,
+      if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
+      if (acknowledged != null) 'acknowledged': acknowledged,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SeenDevicesCompanion copyWith({
+    Value<String>? networkId,
+    Value<String>? deviceIdentity,
+    Value<String>? ip,
+    Value<String>? label,
+    Value<DateTime>? firstSeenAt,
+    Value<bool>? acknowledged,
+    Value<int>? rowid,
+  }) {
+    return SeenDevicesCompanion(
+      networkId: networkId ?? this.networkId,
+      deviceIdentity: deviceIdentity ?? this.deviceIdentity,
+      ip: ip ?? this.ip,
+      label: label ?? this.label,
+      firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+      acknowledged: acknowledged ?? this.acknowledged,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (networkId.present) {
+      map['network_id'] = Variable<String>(networkId.value);
+    }
+    if (deviceIdentity.present) {
+      map['device_identity'] = Variable<String>(deviceIdentity.value);
+    }
+    if (ip.present) {
+      map['ip'] = Variable<String>(ip.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (firstSeenAt.present) {
+      map['first_seen_at'] = Variable<DateTime>(firstSeenAt.value);
+    }
+    if (acknowledged.present) {
+      map['acknowledged'] = Variable<bool>(acknowledged.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeenDevicesCompanion(')
+          ..write('networkId: $networkId, ')
+          ..write('deviceIdentity: $deviceIdentity, ')
+          ..write('ip: $ip, ')
+          ..write('label: $label, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('acknowledged: $acknowledged, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DeepScanPortsTable extends DeepScanPorts
+    with TableInfo<$DeepScanPortsTable, DeepScanPort> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeepScanPortsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceIdentityMeta = const VerificationMeta(
+    'deviceIdentity',
+  );
+  @override
+  late final GeneratedColumn<String> deviceIdentity = GeneratedColumn<String>(
+    'device_identity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _networkIdMeta = const VerificationMeta(
+    'networkId',
+  );
+  @override
+  late final GeneratedColumn<String> networkId = GeneratedColumn<String>(
+    'network_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _portMeta = const VerificationMeta('port');
+  @override
+  late final GeneratedColumn<int> port = GeneratedColumn<int>(
+    'port',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _discoveredAtMeta = const VerificationMeta(
+    'discoveredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> discoveredAt = GeneratedColumn<DateTime>(
+    'discovered_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    deviceIdentity,
+    networkId,
+    port,
+    discoveredAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deep_scan_ports';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeepScanPort> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_identity')) {
+      context.handle(
+        _deviceIdentityMeta,
+        deviceIdentity.isAcceptableOrUnknown(
+          data['device_identity']!,
+          _deviceIdentityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdentityMeta);
+    }
+    if (data.containsKey('network_id')) {
+      context.handle(
+        _networkIdMeta,
+        networkId.isAcceptableOrUnknown(data['network_id']!, _networkIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_networkIdMeta);
+    }
+    if (data.containsKey('port')) {
+      context.handle(
+        _portMeta,
+        port.isAcceptableOrUnknown(data['port']!, _portMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_portMeta);
+    }
+    if (data.containsKey('discovered_at')) {
+      context.handle(
+        _discoveredAtMeta,
+        discoveredAt.isAcceptableOrUnknown(
+          data['discovered_at']!,
+          _discoveredAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_discoveredAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceIdentity, port};
+  @override
+  DeepScanPort map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeepScanPort(
+      deviceIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_identity'],
+      )!,
+      networkId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network_id'],
+      )!,
+      port: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}port'],
+      )!,
+      discoveredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}discovered_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeepScanPortsTable createAlias(String alias) {
+    return $DeepScanPortsTable(attachedDatabase, alias);
+  }
+}
+
+class DeepScanPort extends DataClass implements Insertable<DeepScanPort> {
+  final String deviceIdentity;
+  final String networkId;
+  final int port;
+  final DateTime discoveredAt;
+  const DeepScanPort({
+    required this.deviceIdentity,
+    required this.networkId,
+    required this.port,
+    required this.discoveredAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_identity'] = Variable<String>(deviceIdentity);
+    map['network_id'] = Variable<String>(networkId);
+    map['port'] = Variable<int>(port);
+    map['discovered_at'] = Variable<DateTime>(discoveredAt);
+    return map;
+  }
+
+  DeepScanPortsCompanion toCompanion(bool nullToAbsent) {
+    return DeepScanPortsCompanion(
+      deviceIdentity: Value(deviceIdentity),
+      networkId: Value(networkId),
+      port: Value(port),
+      discoveredAt: Value(discoveredAt),
+    );
+  }
+
+  factory DeepScanPort.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeepScanPort(
+      deviceIdentity: serializer.fromJson<String>(json['deviceIdentity']),
+      networkId: serializer.fromJson<String>(json['networkId']),
+      port: serializer.fromJson<int>(json['port']),
+      discoveredAt: serializer.fromJson<DateTime>(json['discoveredAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceIdentity': serializer.toJson<String>(deviceIdentity),
+      'networkId': serializer.toJson<String>(networkId),
+      'port': serializer.toJson<int>(port),
+      'discoveredAt': serializer.toJson<DateTime>(discoveredAt),
+    };
+  }
+
+  DeepScanPort copyWith({
+    String? deviceIdentity,
+    String? networkId,
+    int? port,
+    DateTime? discoveredAt,
+  }) => DeepScanPort(
+    deviceIdentity: deviceIdentity ?? this.deviceIdentity,
+    networkId: networkId ?? this.networkId,
+    port: port ?? this.port,
+    discoveredAt: discoveredAt ?? this.discoveredAt,
+  );
+  DeepScanPort copyWithCompanion(DeepScanPortsCompanion data) {
+    return DeepScanPort(
+      deviceIdentity: data.deviceIdentity.present
+          ? data.deviceIdentity.value
+          : this.deviceIdentity,
+      networkId: data.networkId.present ? data.networkId.value : this.networkId,
+      port: data.port.present ? data.port.value : this.port,
+      discoveredAt: data.discoveredAt.present
+          ? data.discoveredAt.value
+          : this.discoveredAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeepScanPort(')
+          ..write('deviceIdentity: $deviceIdentity, ')
+          ..write('networkId: $networkId, ')
+          ..write('port: $port, ')
+          ..write('discoveredAt: $discoveredAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(deviceIdentity, networkId, port, discoveredAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeepScanPort &&
+          other.deviceIdentity == this.deviceIdentity &&
+          other.networkId == this.networkId &&
+          other.port == this.port &&
+          other.discoveredAt == this.discoveredAt);
+}
+
+class DeepScanPortsCompanion extends UpdateCompanion<DeepScanPort> {
+  final Value<String> deviceIdentity;
+  final Value<String> networkId;
+  final Value<int> port;
+  final Value<DateTime> discoveredAt;
+  final Value<int> rowid;
+  const DeepScanPortsCompanion({
+    this.deviceIdentity = const Value.absent(),
+    this.networkId = const Value.absent(),
+    this.port = const Value.absent(),
+    this.discoveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeepScanPortsCompanion.insert({
+    required String deviceIdentity,
+    required String networkId,
+    required int port,
+    required DateTime discoveredAt,
+    this.rowid = const Value.absent(),
+  }) : deviceIdentity = Value(deviceIdentity),
+       networkId = Value(networkId),
+       port = Value(port),
+       discoveredAt = Value(discoveredAt);
+  static Insertable<DeepScanPort> custom({
+    Expression<String>? deviceIdentity,
+    Expression<String>? networkId,
+    Expression<int>? port,
+    Expression<DateTime>? discoveredAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceIdentity != null) 'device_identity': deviceIdentity,
+      if (networkId != null) 'network_id': networkId,
+      if (port != null) 'port': port,
+      if (discoveredAt != null) 'discovered_at': discoveredAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeepScanPortsCompanion copyWith({
+    Value<String>? deviceIdentity,
+    Value<String>? networkId,
+    Value<int>? port,
+    Value<DateTime>? discoveredAt,
+    Value<int>? rowid,
+  }) {
+    return DeepScanPortsCompanion(
+      deviceIdentity: deviceIdentity ?? this.deviceIdentity,
+      networkId: networkId ?? this.networkId,
+      port: port ?? this.port,
+      discoveredAt: discoveredAt ?? this.discoveredAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceIdentity.present) {
+      map['device_identity'] = Variable<String>(deviceIdentity.value);
+    }
+    if (networkId.present) {
+      map['network_id'] = Variable<String>(networkId.value);
+    }
+    if (port.present) {
+      map['port'] = Variable<int>(port.value);
+    }
+    if (discoveredAt.present) {
+      map['discovered_at'] = Variable<DateTime>(discoveredAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeepScanPortsCompanion(')
+          ..write('deviceIdentity: $deviceIdentity, ')
+          ..write('networkId: $networkId, ')
+          ..write('port: $port, ')
+          ..write('discoveredAt: $discoveredAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$HistoryDatabase extends GeneratedDatabase {
   _$HistoryDatabase(QueryExecutor e) : super(e);
   $HistoryDatabaseManager get managers => $HistoryDatabaseManager(this);
   late final $ScansTable scans = $ScansTable(this);
   late final $LatencySamplesTable latencySamples = $LatencySamplesTable(this);
+  late final $SeenDevicesTable seenDevices = $SeenDevicesTable(this);
+  late final $DeepScanPortsTable deepScanPorts = $DeepScanPortsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [scans, latencySamples];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    scans,
+    latencySamples,
+    seenDevices,
+    deepScanPorts,
+  ];
   @override
   DriftDatabaseOptions get options =>
       const DriftDatabaseOptions(storeDateTimeAsText: true);
@@ -1227,6 +1995,422 @@ typedef $$LatencySamplesTableProcessedTableManager =
       LatencySample,
       PrefetchHooks Function()
     >;
+typedef $$SeenDevicesTableCreateCompanionBuilder =
+    SeenDevicesCompanion Function({
+      required String networkId,
+      required String deviceIdentity,
+      required String ip,
+      required String label,
+      required DateTime firstSeenAt,
+      required bool acknowledged,
+      Value<int> rowid,
+    });
+typedef $$SeenDevicesTableUpdateCompanionBuilder =
+    SeenDevicesCompanion Function({
+      Value<String> networkId,
+      Value<String> deviceIdentity,
+      Value<String> ip,
+      Value<String> label,
+      Value<DateTime> firstSeenAt,
+      Value<bool> acknowledged,
+      Value<int> rowid,
+    });
+
+class $$SeenDevicesTableFilterComposer
+    extends Composer<_$HistoryDatabase, $SeenDevicesTable> {
+  $$SeenDevicesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get networkId => $composableBuilder(
+    column: $table.networkId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceIdentity => $composableBuilder(
+    column: $table.deviceIdentity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ip => $composableBuilder(
+    column: $table.ip,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get acknowledged => $composableBuilder(
+    column: $table.acknowledged,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SeenDevicesTableOrderingComposer
+    extends Composer<_$HistoryDatabase, $SeenDevicesTable> {
+  $$SeenDevicesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get networkId => $composableBuilder(
+    column: $table.networkId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceIdentity => $composableBuilder(
+    column: $table.deviceIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ip => $composableBuilder(
+    column: $table.ip,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get acknowledged => $composableBuilder(
+    column: $table.acknowledged,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SeenDevicesTableAnnotationComposer
+    extends Composer<_$HistoryDatabase, $SeenDevicesTable> {
+  $$SeenDevicesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get networkId =>
+      $composableBuilder(column: $table.networkId, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceIdentity => $composableBuilder(
+    column: $table.deviceIdentity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ip =>
+      $composableBuilder(column: $table.ip, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get acknowledged => $composableBuilder(
+    column: $table.acknowledged,
+    builder: (column) => column,
+  );
+}
+
+class $$SeenDevicesTableTableManager
+    extends
+        RootTableManager<
+          _$HistoryDatabase,
+          $SeenDevicesTable,
+          SeenDevice,
+          $$SeenDevicesTableFilterComposer,
+          $$SeenDevicesTableOrderingComposer,
+          $$SeenDevicesTableAnnotationComposer,
+          $$SeenDevicesTableCreateCompanionBuilder,
+          $$SeenDevicesTableUpdateCompanionBuilder,
+          (
+            SeenDevice,
+            BaseReferences<_$HistoryDatabase, $SeenDevicesTable, SeenDevice>,
+          ),
+          SeenDevice,
+          PrefetchHooks Function()
+        > {
+  $$SeenDevicesTableTableManager(_$HistoryDatabase db, $SeenDevicesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SeenDevicesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SeenDevicesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SeenDevicesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> networkId = const Value.absent(),
+                Value<String> deviceIdentity = const Value.absent(),
+                Value<String> ip = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<DateTime> firstSeenAt = const Value.absent(),
+                Value<bool> acknowledged = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SeenDevicesCompanion(
+                networkId: networkId,
+                deviceIdentity: deviceIdentity,
+                ip: ip,
+                label: label,
+                firstSeenAt: firstSeenAt,
+                acknowledged: acknowledged,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String networkId,
+                required String deviceIdentity,
+                required String ip,
+                required String label,
+                required DateTime firstSeenAt,
+                required bool acknowledged,
+                Value<int> rowid = const Value.absent(),
+              }) => SeenDevicesCompanion.insert(
+                networkId: networkId,
+                deviceIdentity: deviceIdentity,
+                ip: ip,
+                label: label,
+                firstSeenAt: firstSeenAt,
+                acknowledged: acknowledged,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SeenDevicesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HistoryDatabase,
+      $SeenDevicesTable,
+      SeenDevice,
+      $$SeenDevicesTableFilterComposer,
+      $$SeenDevicesTableOrderingComposer,
+      $$SeenDevicesTableAnnotationComposer,
+      $$SeenDevicesTableCreateCompanionBuilder,
+      $$SeenDevicesTableUpdateCompanionBuilder,
+      (
+        SeenDevice,
+        BaseReferences<_$HistoryDatabase, $SeenDevicesTable, SeenDevice>,
+      ),
+      SeenDevice,
+      PrefetchHooks Function()
+    >;
+typedef $$DeepScanPortsTableCreateCompanionBuilder =
+    DeepScanPortsCompanion Function({
+      required String deviceIdentity,
+      required String networkId,
+      required int port,
+      required DateTime discoveredAt,
+      Value<int> rowid,
+    });
+typedef $$DeepScanPortsTableUpdateCompanionBuilder =
+    DeepScanPortsCompanion Function({
+      Value<String> deviceIdentity,
+      Value<String> networkId,
+      Value<int> port,
+      Value<DateTime> discoveredAt,
+      Value<int> rowid,
+    });
+
+class $$DeepScanPortsTableFilterComposer
+    extends Composer<_$HistoryDatabase, $DeepScanPortsTable> {
+  $$DeepScanPortsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceIdentity => $composableBuilder(
+    column: $table.deviceIdentity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get networkId => $composableBuilder(
+    column: $table.networkId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get port => $composableBuilder(
+    column: $table.port,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get discoveredAt => $composableBuilder(
+    column: $table.discoveredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeepScanPortsTableOrderingComposer
+    extends Composer<_$HistoryDatabase, $DeepScanPortsTable> {
+  $$DeepScanPortsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceIdentity => $composableBuilder(
+    column: $table.deviceIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get networkId => $composableBuilder(
+    column: $table.networkId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get port => $composableBuilder(
+    column: $table.port,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get discoveredAt => $composableBuilder(
+    column: $table.discoveredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeepScanPortsTableAnnotationComposer
+    extends Composer<_$HistoryDatabase, $DeepScanPortsTable> {
+  $$DeepScanPortsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceIdentity => $composableBuilder(
+    column: $table.deviceIdentity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get networkId =>
+      $composableBuilder(column: $table.networkId, builder: (column) => column);
+
+  GeneratedColumn<int> get port =>
+      $composableBuilder(column: $table.port, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get discoveredAt => $composableBuilder(
+    column: $table.discoveredAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DeepScanPortsTableTableManager
+    extends
+        RootTableManager<
+          _$HistoryDatabase,
+          $DeepScanPortsTable,
+          DeepScanPort,
+          $$DeepScanPortsTableFilterComposer,
+          $$DeepScanPortsTableOrderingComposer,
+          $$DeepScanPortsTableAnnotationComposer,
+          $$DeepScanPortsTableCreateCompanionBuilder,
+          $$DeepScanPortsTableUpdateCompanionBuilder,
+          (
+            DeepScanPort,
+            BaseReferences<
+              _$HistoryDatabase,
+              $DeepScanPortsTable,
+              DeepScanPort
+            >,
+          ),
+          DeepScanPort,
+          PrefetchHooks Function()
+        > {
+  $$DeepScanPortsTableTableManager(
+    _$HistoryDatabase db,
+    $DeepScanPortsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeepScanPortsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeepScanPortsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeepScanPortsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> deviceIdentity = const Value.absent(),
+                Value<String> networkId = const Value.absent(),
+                Value<int> port = const Value.absent(),
+                Value<DateTime> discoveredAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeepScanPortsCompanion(
+                deviceIdentity: deviceIdentity,
+                networkId: networkId,
+                port: port,
+                discoveredAt: discoveredAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deviceIdentity,
+                required String networkId,
+                required int port,
+                required DateTime discoveredAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DeepScanPortsCompanion.insert(
+                deviceIdentity: deviceIdentity,
+                networkId: networkId,
+                port: port,
+                discoveredAt: discoveredAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeepScanPortsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HistoryDatabase,
+      $DeepScanPortsTable,
+      DeepScanPort,
+      $$DeepScanPortsTableFilterComposer,
+      $$DeepScanPortsTableOrderingComposer,
+      $$DeepScanPortsTableAnnotationComposer,
+      $$DeepScanPortsTableCreateCompanionBuilder,
+      $$DeepScanPortsTableUpdateCompanionBuilder,
+      (
+        DeepScanPort,
+        BaseReferences<_$HistoryDatabase, $DeepScanPortsTable, DeepScanPort>,
+      ),
+      DeepScanPort,
+      PrefetchHooks Function()
+    >;
 
 class $HistoryDatabaseManager {
   final _$HistoryDatabase _db;
@@ -1235,4 +2419,8 @@ class $HistoryDatabaseManager {
       $$ScansTableTableManager(_db, _db.scans);
   $$LatencySamplesTableTableManager get latencySamples =>
       $$LatencySamplesTableTableManager(_db, _db.latencySamples);
+  $$SeenDevicesTableTableManager get seenDevices =>
+      $$SeenDevicesTableTableManager(_db, _db.seenDevices);
+  $$DeepScanPortsTableTableManager get deepScanPorts =>
+      $$DeepScanPortsTableTableManager(_db, _db.deepScanPorts);
 }

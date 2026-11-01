@@ -17,10 +17,12 @@ import '../scan/well_known_ports.dart';
 import '../state/column_widths.dart';
 import '../state/network_selection.dart';
 import '../state/providers.dart';
+import '../state/scan_state.dart';
 import '../version.dart';
 import 'about_dialog.dart';
 import 'device_visuals.dart';
 import 'history_screen.dart';
+import 'new_devices_dialog.dart';
 import 'settings_screen.dart';
 
 class ScanScreen extends ConsumerWidget {
@@ -147,7 +149,16 @@ class ScanScreen extends ConsumerWidget {
           _StatusBar(),
           const Divider(height: 1),
           Expanded(
-            child: _DeviceTable(devices: scan.devices, isBusy: scan.isBusy),
+            child: _DeviceTable(
+              devices: scan.devices,
+              isBusy: scan.isBusy,
+              newIdentities: scan.justDiscoveredIdentities,
+              deepScanDeviceIdentity: scan.isDeepScanning
+                  ? scan.deepScanDeviceIdentity
+                  : null,
+              deepScanCompleted: scan.deepScanCompleted,
+              deepScanTotal: scan.deepScanTotal,
+            ),
           ),
         ],
       ),
@@ -166,6 +177,10 @@ class _Toolbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final effective = effectiveNetwork(
+      networks,
+      ref.watch(selectedNetworkProvider),
+    );
     final l10n = AppLocalizations.of(context);
 
     return Row(
@@ -186,6 +201,10 @@ class _Toolbar extends ConsumerWidget {
           icon: const Icon(Icons.history),
           onPressed: () => _openHistory(context),
         ),
+        if (effective != null) ...[
+          const SizedBox(width: 8),
+          _NewDevicesButton(networkId: effective.id),
+        ],
         const Spacer(),
         IconButton(
           tooltip: l10n.aboutTooltip,
@@ -210,6 +229,35 @@ void _openSettings(BuildContext context) => Navigator.of(
   context,
 ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
 
+/// Toolbar button showing how many devices on [networkId] were newly
+/// discovered and haven't been acknowledged yet (a persisted, cross-session
+/// count — see `HistoryDatabase.recordNewDevices`). Opens [NewDevicesDialog],
+/// which marks them acknowledged as soon as it's opened, clearing the badge.
+class _NewDevicesButton extends ConsumerWidget {
+  const _NewDevicesButton({required this.networkId});
+
+  final String networkId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final count = ref.watch(unreadNewDeviceCountProvider(networkId)).value ?? 0;
+    Widget badged(Widget icon) =>
+        Badge(label: Text('$count'), isLabelVisible: count > 0, child: icon);
+
+    return IconButton(
+      tooltip: l10n.newDevicesTooltip,
+      isSelected: count > 0,
+      icon: badged(const Icon(Icons.fiber_new_outlined)),
+      selectedIcon: badged(const Icon(Icons.fiber_new)),
+      onPressed: () => showDialog<void>(
+        context: context,
+        builder: (_) => NewDevicesDialog(networkId: networkId),
+      ),
+    );
+  }
+}
+
 /// Phone layout: the network picker on its own full-width line, with the scan,
 /// monitor and export controls underneath.
 class _CompactControls extends ConsumerWidget {
@@ -219,6 +267,10 @@ class _CompactControls extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final effective = effectiveNetwork(
+      networks,
+      ref.watch(selectedNetworkProvider),
+    );
     final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
@@ -236,6 +288,8 @@ class _CompactControls extends ConsumerWidget {
               const SizedBox(width: 8),
               _MonitorButton(networks: networks),
               const _ExportButton(),
+              if (effective != null)
+                _NewDevicesButton(networkId: effective.id),
             ],
           ),
         ],
@@ -345,7 +399,10 @@ class _ScanButton extends ConsumerWidget {
       );
     }
     return FilledButton.icon(
-      onPressed: effective == null
+      // Also disabled during a deep scan: only one thing may mutate the live
+      // device list at a time (see ScanController's mutual exclusion), and a
+      // deep scan doesn't set isBusy.
+      onPressed: effective == null || scan.isDeepScanning
           ? null
           : () =>
                 ref.read(scanControllerProvider.notifier).startScan(effective),
@@ -374,7 +431,9 @@ class _MonitorButton extends ConsumerWidget {
       isSelected: scan.isMonitoring,
       selectedIcon: const Icon(Icons.sensors),
       icon: const Icon(Icons.sensors_off_outlined),
-      onPressed: effective == null
+      // Disabled during a deep scan for the same reason as SCAN: enabling
+      // monitoring would schedule ticks that race it for _byIp.
+      onPressed: effective == null || scan.isDeepScanning
           ? null
           : () => ref
                 .read(scanControllerProvider.notifier)
@@ -465,17 +524,56 @@ class _StatusBar extends ConsumerWidget {
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (scan.isMonitoring) ...[
-            Icon(
-              Icons.sensors,
-              size: 14,
-              color: Theme.of(context).colorScheme.primary,
+          Row(
+            children: [
+              if (scan.isMonitoring) ...[
+                Icon(
+                  Icons.sensors,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(status, style: style),
+            ],
+          ),
+          if (scan.isDeepScanning) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: scan.deepScanTotal == 0
+                        ? null
+                        : scan.deepScanCompleted / scan.deepScanTotal,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.deepScanStatusLine(
+                    scan.deepScanIp ?? '',
+                    scan.deepScanCompleted,
+                    scan.deepScanTotal,
+                  ),
+                  style: style,
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => ref
+                      .read(scanControllerProvider.notifier)
+                      .cancelDeepPortScan(),
+                  child: Text(l10n.cancel),
+                ),
+              ],
             ),
-            const SizedBox(width: 6),
           ],
-          Text(status, style: style),
         ],
       ),
     );
@@ -541,10 +639,27 @@ ColumnMinWidths _headerMinWidths(
 /// header-label minimum and the row still doesn't fit, this switches to
 /// horizontal scrolling rather than clipping or overlapping content.
 class _DeviceTable extends ConsumerWidget {
-  const _DeviceTable({required this.devices, required this.isBusy});
+  const _DeviceTable({
+    required this.devices,
+    required this.isBusy,
+    required this.newIdentities,
+    required this.deepScanDeviceIdentity,
+    required this.deepScanCompleted,
+    required this.deepScanTotal,
+  });
 
   final List<Device> devices;
   final bool isBusy;
+
+  /// Identities highlighted as "just discovered" this scan — see
+  /// [ScanState.justDiscoveredIdentities].
+  final Set<String> newIdentities;
+
+  /// Identity of the device currently being deep-scanned, if any — see
+  /// [ScanState.deepScanDeviceIdentity].
+  final String? deepScanDeviceIdentity;
+  final int deepScanCompleted;
+  final int deepScanTotal;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -563,13 +678,28 @@ class _DeviceTable extends ConsumerWidget {
           ),
         );
 
+        ({int completed, int total})? progressFor(Device device) {
+          final identity = deviceIdentity(
+            mac: device.mac,
+            hostname: device.hostname,
+            openPorts: device.openPorts,
+          );
+          return identity == deepScanDeviceIdentity
+              ? (completed: deepScanCompleted, total: deepScanTotal)
+              : null;
+        }
+
         // Phone layout: one card per device instead of the column table.
         if (compact) {
           if (devices.isEmpty) return empty;
           return ListView.builder(
             itemCount: devices.length,
-            itemBuilder: (context, i) =>
-                DeviceRow.compact(device: devices[i], tinted: i.isOdd),
+            itemBuilder: (context, i) => DeviceRow.compact(
+              device: devices[i],
+              tinted: i.isOdd,
+              newIdentities: newIdentities,
+              deepScanProgress: progressFor(devices[i]),
+            ),
           );
         }
 
@@ -587,6 +717,8 @@ class _DeviceTable extends ConsumerWidget {
                   widths: widths,
                   device: devices[i],
                   tinted: i.isOdd,
+                  newIdentities: newIdentities,
+                  deepScanProgress: progressFor(devices[i]),
                 ),
               );
 
@@ -731,6 +863,8 @@ class DeviceRow extends ConsumerWidget {
     required EffectiveColumnWidths this.widths,
     required this.device,
     this.tinted = false,
+    this.newIdentities = const {},
+    this.deepScanProgress,
   });
 
   /// Phone layout: a two-line card with details and actions in a bottom sheet,
@@ -739,6 +873,8 @@ class DeviceRow extends ConsumerWidget {
     super.key,
     required this.device,
     this.tinted = false,
+    this.newIdentities = const {},
+    this.deepScanProgress,
   }) : widths = null;
 
   /// Column widths for the table row; null for the [DeviceRow.compact] card.
@@ -747,6 +883,15 @@ class DeviceRow extends ConsumerWidget {
 
   /// Whether this row gets the alternating (zebra) background tint.
   final bool tinted;
+
+  /// Identities highlighted as "just discovered" this scan — see
+  /// [ScanState.justDiscoveredIdentities]. Takes priority over [tinted]'s
+  /// zebra striping when this row's device is in the set.
+  final Set<String> newIdentities;
+
+  /// Non-null while this exact device is being deep-scanned — replaces the
+  /// status dot with a progress ring. See [ScanState.deepScanCompleted].
+  final ({int completed, int total})? deepScanProgress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -777,10 +922,7 @@ class DeviceRow extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _StatusDot(
-                  online: device.isOnline,
-                  latencyMs: device.latencyMs,
-                ),
+                _statusIndicator(),
                 const SizedBox(width: 6),
                 Tooltip(
                   message: device.isOnline
@@ -919,15 +1061,49 @@ class DeviceRow extends ConsumerWidget {
     );
 
     return Material(
-      color: tinted
-          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
-          : Colors.transparent,
+      color: _background(theme, identity),
       child: InkWell(
         onSecondaryTapDown: (d) => _showMenu(context, ref, d.globalPosition),
         onLongPress: () => _showMenu(context, ref, null),
         child: row,
       ),
     );
+  }
+
+  /// The status dot, or a progress ring while this device is deep-scanned.
+  Widget _statusIndicator() {
+    final progress = deepScanProgress;
+    if (progress == null) {
+      return _StatusDot(online: device.isOnline, latencyMs: device.latencyMs);
+    }
+    return SizedBox(
+      width: 9,
+      height: 9,
+      child: CircularProgressIndicator(
+        strokeWidth: 1.5,
+        value: progress.total == 0 ? null : progress.completed / progress.total,
+      ),
+    );
+  }
+
+  /// Green for a just-discovered device, else the zebra tint (if [tinted]).
+  Color _background(ThemeData theme, String identity) {
+    if (newIdentities.contains(identity)) {
+      return Colors.green.withValues(alpha: 0.15);
+    }
+    if (tinted) {
+      return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4);
+    }
+    return Colors.transparent;
+  }
+
+  /// Why a deep scan of this device can't start right now, or null if it can.
+  String? _deepScanDisabledReason(AppLocalizations l10n, ScanState scan) {
+    if (!device.isOnline) return l10n.deepScanOfflineTooltip;
+    if (scan.isScanning || scan.isBackgroundScanning || scan.isDeepScanning) {
+      return l10n.deepScanBusyTooltip;
+    }
+    return null;
   }
 
   Widget _buildCard(BuildContext context, WidgetRef ref) {
@@ -947,16 +1123,14 @@ class DeviceRow extends ConsumerWidget {
         : '${device.ip} +${device.additionalIps.length}';
 
     return Material(
-      color: tinted
-          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
-          : Colors.transparent,
+      color: _background(theme, identity),
       child: ListTile(
         onTap: () => _showDetails(context, ref, latency),
         onLongPress: () => _showMenu(context, ref, null),
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _StatusDot(online: device.isOnline, latencyMs: device.latencyMs),
+            _statusIndicator(),
             const SizedBox(width: 8),
             Icon(deviceIcon(device), size: 22, color: offline ? muted : null),
           ],
@@ -995,6 +1169,10 @@ class DeviceRow extends ConsumerWidget {
   ) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final deepScanDisabledReason = _deepScanDisabledReason(
+      l10n,
+      ref.read(scanControllerProvider),
+    );
 
     Widget field(String label, Widget value) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1074,6 +1252,22 @@ class DeviceRow extends ConsumerWidget {
                     if (context.mounted) _perform(context, ref, action.value);
                   },
                 ),
+              const Divider(),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                enabled: deepScanDisabledReason == null,
+                leading: const Icon(Icons.travel_explore),
+                title: Text(l10n.deepScanMenuItem),
+                // No hover tooltips on touch, so say why it's unavailable.
+                subtitle: deepScanDisabledReason == null
+                    ? null
+                    : Text(deepScanDisabledReason),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  if (context.mounted) _perform(context, ref, 'deep_scan');
+                },
+              ),
             ],
           ),
         ),
@@ -1117,6 +1311,22 @@ class DeviceRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = globalPosition ?? overlay.size.center(Offset.zero);
+
+    final deepScanDisabledReason = _deepScanDisabledReason(
+      l10n,
+      ref.read(scanControllerProvider),
+    );
+    Widget deepScanTile = ListTile(
+      dense: true,
+      leading: const Icon(Icons.travel_explore),
+      title: Text(l10n.deepScanMenuItem),
+    );
+    if (deepScanDisabledReason != null) {
+      deepScanTile = Tooltip(
+        message: deepScanDisabledReason,
+        child: deepScanTile,
+      );
+    }
 
     final selected = await showMenu<String>(
       context: context,
@@ -1165,6 +1375,12 @@ class DeviceRow extends ConsumerWidget {
               title: Text(action.label),
             ),
           ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: deepScanDisabledReason == null ? 'deep_scan' : null,
+          enabled: deepScanDisabledReason == null,
+          child: deepScanTile,
+        ),
       ],
     );
     if (selected == null || !context.mounted) return;
@@ -1190,6 +1406,8 @@ class DeviceRow extends ConsumerWidget {
         await Clipboard.setData(ClipboardData(text: device.mac ?? ''));
       case 'wake':
         if (context.mounted) await _wakeOnLan(context);
+      case 'deep_scan':
+        if (context.mounted) await _confirmAndStartDeepScan(context, ref);
     }
   }
 
@@ -1206,6 +1424,61 @@ class DeviceRow extends ConsumerWidget {
         SnackBar(content: Text(l10n.magicPacketFailed(e.toString()))),
       );
     }
+  }
+
+  Future<void> _confirmAndStartDeepScan(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.deepScanConfirmTitle(device.ip)),
+        content: Text(l10n.deepScanConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.deepScanConfirmButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final networks = ref.read(networksProvider).value ?? const [];
+    final selected = ref.read(selectedNetworkProvider);
+    final network = effectiveNetwork(networks, selected);
+    if (network == null) return;
+
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final found = await ref
+        .read(scanControllerProvider.notifier)
+        .startDeepPortScan(device, network);
+
+    if (found == null) return; // cancelled, or blocked — no summary
+    if (found.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.deepScanCompleteNone(device.ip))),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          l10n.deepScanComplete(
+            device.ip,
+            l10n.deepScanOpenPortCount(found.length),
+            found.join(', '),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _renameDialog(BuildContext context, WidgetRef ref) async {

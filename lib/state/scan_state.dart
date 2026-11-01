@@ -14,6 +14,12 @@ class ScanState {
     this.isBackgroundScanning = false,
     this.backgroundScanned = 0,
     this.backgroundTotal = 0,
+    this.justDiscoveredIdentities = const {},
+    this.isDeepScanning = false,
+    this.deepScanDeviceIdentity,
+    this.deepScanIp,
+    this.deepScanCompleted = 0,
+    this.deepScanTotal = 0,
   });
 
   final bool isScanning;
@@ -52,6 +58,31 @@ class ScanState {
   final int backgroundScanned;
   final int backgroundTotal;
 
+  /// Identities recorded as newly-discovered (never seen on this network
+  /// before, durably — see `HistoryDatabase.recordNewDevices`) during the
+  /// most recent scan pass. Drives the "just discovered" row highlight;
+  /// replaced with a fresh set on every scan, so a device stops being
+  /// highlighted the moment the next scan runs, even if the user never
+  /// opened the "new devices" list. Unlike [lastNewDevices] (session-only,
+  /// drives the monitoring snackbar), this persists across app restarts and
+  /// also fires for manual scans, not just monitoring ticks.
+  final Set<String> justDiscoveredIdentities;
+
+  /// True while a deep (all-65,535-port) scan of a single device is in
+  /// flight. Mutually exclusive with [isScanning]/[isBackgroundScanning] —
+  /// see `ScanController.startDeepPortScan`.
+  final bool isDeepScanning;
+
+  /// Identity/IP of the device being deep-scanned, if [isDeepScanning].
+  /// Stale (last-scanned device) once [isDeepScanning] is false — harmless,
+  /// since callers should gate on [isDeepScanning] first.
+  final String? deepScanDeviceIdentity;
+  final String? deepScanIp;
+
+  /// Probe progress for the in-flight deep scan (0 / 0 when none has run).
+  final int deepScanCompleted;
+  final int deepScanTotal;
+
   bool get isBusy => isScanning || enriching;
 
   double get progress => total == 0 ? 0 : scanned / total;
@@ -71,6 +102,12 @@ class ScanState {
     bool? isBackgroundScanning,
     int? backgroundScanned,
     int? backgroundTotal,
+    Set<String>? justDiscoveredIdentities,
+    bool? isDeepScanning,
+    String? deepScanDeviceIdentity,
+    String? deepScanIp,
+    int? deepScanCompleted,
+    int? deepScanTotal,
   }) {
     return ScanState(
       isScanning: isScanning ?? this.isScanning,
@@ -84,6 +121,14 @@ class ScanState {
       isBackgroundScanning: isBackgroundScanning ?? this.isBackgroundScanning,
       backgroundScanned: backgroundScanned ?? this.backgroundScanned,
       backgroundTotal: backgroundTotal ?? this.backgroundTotal,
+      justDiscoveredIdentities:
+          justDiscoveredIdentities ?? this.justDiscoveredIdentities,
+      isDeepScanning: isDeepScanning ?? this.isDeepScanning,
+      deepScanDeviceIdentity:
+          deepScanDeviceIdentity ?? this.deepScanDeviceIdentity,
+      deepScanIp: deepScanIp ?? this.deepScanIp,
+      deepScanCompleted: deepScanCompleted ?? this.deepScanCompleted,
+      deepScanTotal: deepScanTotal ?? this.deepScanTotal,
     );
   }
 }
