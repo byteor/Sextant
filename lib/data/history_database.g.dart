@@ -2196,7 +2196,16 @@ class $$SeenDevicesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SeenDevicesTable, SeenDevice>(table),
+                  BaseReferences<
+                    _$HistoryDatabase,
+                    $SeenDevicesTable,
+                    SeenDevice
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2387,7 +2396,16 @@ class $$DeepScanPortsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DeepScanPortsTable, DeepScanPort>(table),
+                  BaseReferences<
+                    _$HistoryDatabase,
+                    $DeepScanPortsTable,
+                    DeepScanPort
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
